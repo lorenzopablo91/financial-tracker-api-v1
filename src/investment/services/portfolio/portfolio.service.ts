@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { IOL_ENDPOINTS } from 'src/iol-api/core/constants/iol-endpoints';
-import { IolBaseService } from 'src/iol-api/core/services/iol-base/iol-base.service';
+import { IOL_ENDPOINTS } from '../../../iol-api/core/constants/iol-endpoints';
+import { IolBaseService } from '../../../iol-api/core/services/iol-base/iol-base.service';
 
 @Injectable()
 export class PortfolioService {
