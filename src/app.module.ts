@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { InvestmentModule } from './investment/investment.module';
-import { DolarApiModule } from './dolar-api/dolar-api.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { InvestmentModule } from './investment/investment.module';
+import { DolarApiModule } from './dolar-api/dolar-api.module';
+import { IolApiModule } from './iol-api/iol-api.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { AppService } from './app.service';
     }),
     InvestmentModule,
     DolarApiModule,
+    IolApiModule
   ],
   controllers: [AppController],
   providers: [AppService],
