@@ -8,18 +8,18 @@ import { IolApiHelper } from '../../helpers/iol-api.helper';
 
 @Injectable()
 export class IolBaseService {
-  protected readonly logger = new Logger(IolBaseService.name);
+  private readonly logger = new Logger(IolBaseService.name);
   private readonly baseUrl: string;
 
   constructor(
-    protected readonly configService: ConfigService,
-    protected readonly httpService: HttpService,
-    protected readonly authTokenService: AuthTokenService,
+    private readonly configService: ConfigService,
+    private readonly httpService: HttpService,
+    private readonly authTokenService: AuthTokenService,
   ) {
     this.baseUrl = this.configService.get<string>('IOL_BASE_URL') || '';
   }
 
-  protected makeAuthenticatedRequest<T = any>(
+  makeAuthenticatedRequest<T = any>(
     endpoint: string,
     method: 'GET' | 'POST' = 'GET',
     data?: any,
@@ -51,11 +51,11 @@ export class IolBaseService {
     );
   }
 
-  protected formatResponse<T>(data: T, additionalInfo?: Record<string, any>) {
+  formatResponse<T>(data: T, additionalInfo?: Record<string, any>) {
     return IolApiHelper.formatResponse(data, additionalInfo);
   }
 
-  protected get<T = any>(endpoint: string, params?: Record<string, any>): Observable<T> {
+  get<T = any>(endpoint: string, params?: Record<string, any>): Observable<T> {
     let url = endpoint;
 
     if (params && Object.keys(params).length > 0) {
@@ -71,7 +71,7 @@ export class IolBaseService {
     return this.makeAuthenticatedRequest<T>(url, 'GET');
   }
 
-  protected post<T = any>(endpoint: string, data?: any): Observable<T> {
+  post<T = any>(endpoint: string, data?: any): Observable<T> {
     return this.makeAuthenticatedRequest<T>(endpoint, 'POST', data);
   }
 }
