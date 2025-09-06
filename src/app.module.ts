@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { InvestmentModule } from './investment/investment.module';
 import { DolarApiModule } from './dolar-api/dolar-api.module';
 import { IolApiModule } from './iol-api/iol-api.module';
+import { BinanceApiModule } from './binance-api/binance-api.module';
 
 @Module({
   imports: [
@@ -13,7 +14,8 @@ import { IolApiModule } from './iol-api/iol-api.module';
     }),
     InvestmentModule,
     DolarApiModule,
-    IolApiModule
+    IolApiModule,
+    BinanceApiModule
   ],
   controllers: [AppController],
   providers: [AppService],

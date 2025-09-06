@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { IolApiResponse } from '../interfaces/iol-response.interface';
 
-export class IolApiHelper {
+export class IolBaseHelper {
     private static readonly logger = new Logger('IolApiHelper');
 
     // Manejo de errores de la API de IOL

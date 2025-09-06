@@ -49,4 +49,50 @@ export class PortfolioController {
       }))
     );
   }
+
+  // ===== ENDPOINTS BINANCE API =====
+  @Get('crypto')
+  obtenerPortfolioCrypto(): Observable<any> {
+    return this.portfolioService.getPortfolioCrypto().pipe(
+      map(data => {
+        const totalValue = data.reduce((sum, crypto) => sum + crypto.valueUSD, 0);
+
+        return {
+          success: true,
+          region: 'CRYPTO',
+          data,
+          summary: {
+            totalAssets: data.length,
+            totalValueUSD: totalValue
+          },
+          timestamp: new Date().toISOString()
+        };
+      }),
+      catchError(error => {
+        throw new HttpException(
+          'Error al obtener portafolio de criptomonedas',
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      })
+    );
+  }
+
+  @Get('crypto/balances')
+  obtenerBalancesCrypto(): Observable<any> {
+    return this.portfolioService.getCryptoBalances().pipe(
+      map(data => ({
+        success: true,
+        type: 'balances',
+        data,
+        assetCount: Object.keys(data).length,
+        timestamp: new Date().toISOString()
+      })),
+      catchError(error => {
+        throw new HttpException(
+          'Error al obtener balances de criptomonedas',
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      })
+    );
+  }
 }

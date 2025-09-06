@@ -1,12 +1,16 @@
-import { Controller, Get, HttpException, HttpStatus, Param } from '@nestjs/common';
+import { Controller, Get, HttpException, HttpStatus, Param, Query } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { ExchangeRatesService } from 'src/investment/services/exchange-rates/exchange-rates.service';
+import { PortfolioService } from 'src/investment/services/portfolio/portfolio.service';
 
 @Controller('api/exchange-rates')
 export class ExchangeRatesController {
 
-  constructor(private readonly exchangeRatesService: ExchangeRatesService) { }
+  constructor(
+    private readonly exchangeRatesService: ExchangeRatesService,
+    private readonly portfolioService: PortfolioService,
+  ) { }
 
   // ===== ENDPOINTS DOLAR API =====
   @Get('dolar')
@@ -53,4 +57,35 @@ export class ExchangeRatesController {
       })
     );
   }
+
+  // ===== ENDPOINTS BINANCE API =====
+  @Get('crypto/prices')
+  obtenerPreciosCrypto(@Query('symbols') symbols: string): Observable<any> {
+    if (!symbols) {
+      throw new HttpException(
+        'Parameter symbols is required. Example: ?symbols=BTC,ETH,ADA',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    const symbolsArray = symbols.split(',').map(s => s.trim().toUpperCase());
+
+    return this.portfolioService.getCryptoPrices(symbolsArray).pipe(
+      map(data => ({
+        success: true,
+        type: 'prices',
+        requestedSymbols: symbolsArray,
+        data,
+        priceCount: Object.keys(data).length,
+        timestamp: new Date().toISOString()
+      })),
+      catchError(error => {
+        throw new HttpException(
+          'Error al obtener precios de criptomonedas',
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      })
+    );
+  }
+
 }

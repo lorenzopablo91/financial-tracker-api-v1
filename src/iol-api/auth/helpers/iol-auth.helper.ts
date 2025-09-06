@@ -1,6 +1,6 @@
 import { TokenResponse, RefreshTokenResponse } from '../interfaces/token.interface';
 
-export class AuthTokenHelper {
+export class IolAuthHelper {
     /**
      * Construir parámetros para `application/x-www-form-urlencoded`
      */

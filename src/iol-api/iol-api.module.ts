@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule } from '@nestjs/config';
-import { AuthTokenService } from './auth/services/auth-token/auth-token.service';
+import { IolAuthService } from './auth/services/iol-auth/iol-auth.service';
 import { IolBaseService } from './core/services/iol-base/iol-base.service';
 
 @Module({
@@ -13,11 +13,11 @@ import { IolBaseService } from './core/services/iol-base/iol-base.service';
     ConfigModule,
   ],
   providers: [
-    AuthTokenService,
+    IolAuthService,
     IolBaseService,
   ],
   exports: [
-    AuthTokenService,
+    IolAuthService,
     IolBaseService,
   ],
 })

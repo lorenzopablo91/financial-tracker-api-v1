@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DolarApiModule } from 'src/dolar-api/dolar-api.module';
 import { IolApiModule } from 'src/iol-api/iol-api.module';
+import { BinanceApiModule } from 'src/binance-api/binance-api.module';
 
 // Controllers (endpoints)
 import { ExchangeRatesController } from './controllers/exchange-rates/exchange-rates.controller';
@@ -13,7 +14,8 @@ import { PortfolioService } from './services/portfolio/portfolio.service';
 @Module({
   imports: [
     DolarApiModule,
-    IolApiModule
+    IolApiModule,
+    BinanceApiModule
   ],
   controllers: [
     ExchangeRatesController,

@@ -4,11 +4,11 @@ import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { RefreshTokenResponse, TokenResponse } from '../../interfaces/token.interface';
-import { AuthTokenHelper } from '../../helpers/auth-token.helper';
+import { IolAuthHelper } from '../../helpers/iol-auth.helper';
 
 @Injectable()
-export class AuthTokenService {
-  private readonly logger = new Logger(AuthTokenService.name);
+export class IolAuthService {
+  private readonly logger = new Logger(IolAuthService.name);
   private currentToken: string | null = null;
   private currentRefreshToken: string | null = null;
   private tokenExpiresAt: Date | null = null;
@@ -46,7 +46,7 @@ export class AuthTokenService {
   }
 
   private async getInitialToken(): Promise<TokenResponse> {
-    const params = AuthTokenHelper.buildParams({
+    const params = IolAuthHelper.buildParams({
       username: this.username,
       password: this.password,
       grant_type: this.grantType,
@@ -54,7 +54,7 @@ export class AuthTokenService {
 
     const tokenData = (await this.requestToken(params)) as TokenResponse;
 
-    AuthTokenHelper.saveTokenData(tokenData, {
+    IolAuthHelper.saveTokenData(tokenData, {
       setToken: (v) => (this.currentToken = v),
       setRefreshToken: (v) => (this.currentRefreshToken = v),
       setTokenExpiresAt: (v) => (this.tokenExpiresAt = v),
@@ -71,7 +71,7 @@ export class AuthTokenService {
       return this.getInitialToken();
     }
 
-    const params = AuthTokenHelper.buildParams({
+    const params = IolAuthHelper.buildParams({
       refresh_token: this.currentRefreshToken,
       grant_type: 'refresh_token',
     });
@@ -79,7 +79,7 @@ export class AuthTokenService {
     try {
       const tokenData = (await this.requestToken(params)) as RefreshTokenResponse;
 
-      AuthTokenHelper.saveTokenData(tokenData, {
+      IolAuthHelper.saveTokenData(tokenData, {
         setToken: (v) => (this.currentToken = v),
         setRefreshToken: (v) => (this.currentRefreshToken = v),
         setTokenExpiresAt: (v) => (this.tokenExpiresAt = v),
