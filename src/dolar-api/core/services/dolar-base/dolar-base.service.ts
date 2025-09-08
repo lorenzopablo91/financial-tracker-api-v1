@@ -74,8 +74,6 @@ export class DolarBaseService {
 
         const mayorVenta = cotizaciones.reduce((max, cot) => cot.venta > max.venta ? cot : max);
         const menorVenta = cotizaciones.reduce((min, cot) => cot.venta < min.venta ? cot : min);
-        const mayorSpread = cotizaciones.reduce((max, cot) => cot.spread > max.spread ? cot : max);
-        const menorSpread = cotizaciones.reduce((min, cot) => cot.spread < min.spread ? cot : min);
 
         return {
           cotizaciones: cotizaciones.sort((a, b) => b.venta - a.venta),

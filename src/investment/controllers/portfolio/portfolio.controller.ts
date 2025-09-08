@@ -8,22 +8,9 @@ export class PortfolioController {
 
   constructor(private readonly portfolioService: PortfolioService) { }
 
-  // ===== ENDPOINTS IOL API =====
   @Get()
   obtenerPortfolio(): Observable<any> {
-    return this.portfolioService.getPortfolioArg().pipe(
-      map(data => ({
-        success: true,
-        data,
-        timestamp: new Date().toISOString()
-      })),
-      catchError(error => {
-        throw new HttpException(
-          'Error al obtener portafolio',
-          HttpStatus.INTERNAL_SERVER_ERROR
-        );
-      })
-    );
+    return this.portfolioService.getCategories();
   }
 
   @Get('usa')
