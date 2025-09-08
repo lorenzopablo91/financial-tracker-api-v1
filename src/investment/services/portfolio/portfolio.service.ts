@@ -158,28 +158,43 @@ export class PortfolioService {
   }
 
   private buildCategoriesResponse(calculations: any) {
+    const { dolares, acciones, crypto, total } = calculations;
+
     const categories = [
       {
         name: 'DÓLARES',
-        amount: Math.round(calculations.dolares * 100) / 100,
+        amount: Math.round(dolares * 100) / 100,
         color: '#4BC0C0',
+        percentage: total > 0 ? (dolares / total) * 100 : 0,
+        uninvested: 1704
       },
       {
         name: 'ACCIONES',
-        amount: Math.round(calculations.acciones * 100) / 100,
+        amount: Math.round(acciones * 100) / 100,
         color: '#9966FF',
+        percentage: total > 0 ? (acciones / total) * 100 : 0,
+        uninvested: 3410
       },
       {
         name: 'CRYPTOMONEDAS',
-        amount: Math.round(calculations.crypto * 100) / 100,
+        amount: Math.round(crypto * 100) / 100,
         color: '#FF9F40',
+        percentage: total > 0 ? (crypto / total) * 100 : 0,
+        uninvested: 3410
       }
-    ];
+    ].map(cat => ({
+      ...cat,
+      percentage: Math.round(cat.percentage * 10) / 10
+    }));
+
+    // Calcular total sin invertir
+    const totalUninvested = categories.reduce((sum, cat) => sum + cat.uninvested, 0);
 
     return {
       success: true,
       categories,
       total: Math.round(calculations.total * 100) / 100,
+      totalUninvested,
       metadata: {
         ...calculations.metadata,
         timestamp: new Date().toISOString()
