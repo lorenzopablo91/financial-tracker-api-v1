@@ -94,26 +94,35 @@ export class PortfolioService {
       portfolioBinance = [];
     }
 
-    // Calcular dólares (letras)
-    const totalLetrasDolares = this.calculateLetrasAmount(activos, cotizacionCCL.venta);
+    // Calcular CEDEARS con ganancias
+    const cedearsData = this.calculateActivoAmountWithGains('CEDEARS', activos, cotizacionCCL.venta);
 
-    // Calcular acciones (no letras)
-    const totalAccionesDolares = this.calculateAccionesAmount(activos, cotizacionCCL.venta);
+    // Calcular acciones con ganancias
+    const accionesData = this.calculateActivoAmountWithGains('ACCIONES', activos, cotizacionCCL.venta);
 
     // Calcular crypto
     const totalCrypto = this.calculateCryptoAmount(portfolioBinance);
 
     // Log de resumen
     this.logger.log(
-      `Portfolio calculado - Dólares: $${totalLetrasDolares.toFixed(2)}, ` +
-      `Acciones: $${totalAccionesDolares.toFixed(2)}, Crypto: $${totalCrypto.toFixed(2)}`
+      `Portfolio calculado - CEDEARS: $${cedearsData.valorizado.toFixed(2)} (${cedearsData.gananciaPorc.toFixed(2)}%), ` +
+      `Acciones: $${accionesData.valorizado.toFixed(2)} (${accionesData.gananciaPorc.toFixed(2)}%), ` +
+      `Crypto: $${totalCrypto.toFixed(2)}`
     );
 
     return {
-      dolares: totalLetrasDolares,
-      acciones: totalAccionesDolares,
+      cedears: {
+        valorizado: cedearsData.valorizado,
+        gananciaDinero: cedearsData.gananciaDinero,
+        gananciaPorc: cedearsData.gananciaPorc
+      },
+      acciones: {
+        valorizado: accionesData.valorizado,
+        gananciaDinero: accionesData.gananciaDinero,
+        gananciaPorc: accionesData.gananciaPorc
+      },
       crypto: totalCrypto,
-      total: totalLetrasDolares + totalAccionesDolares + totalCrypto,
+      total: cedearsData.valorizado + accionesData.valorizado + totalCrypto,
       metadata: {
         iolActivos: activos.length,
         letrasEncontradas: activos.filter(a => a?.titulo?.tipo === 'Letras').length,
@@ -124,30 +133,34 @@ export class PortfolioService {
     };
   }
 
-  private calculateLetrasAmount(activos: any[], cotizacionCCL: number): number {
-    const letrasActivo = activos.filter(activo =>
-      activo?.titulo?.tipo === 'Letras'
-    );
+  private calculateActivoAmountWithGains(tipo: string, activos: any[], cotizacion: number) {
+    const activosFiltrados = activos.filter(activo => {
+      const tipoActivo = activo?.titulo?.tipo;
+      return tipo === tipoActivo;
+    });
 
-    const totalLetrasPesos = letrasActivo.reduce((total, activo) => {
-      const valorizado = Number(activo?.valorizado) || 0;
-      return total + valorizado;
-    }, 0);
+    const totales = activosFiltrados.reduce((acc, activo) => {
+      const valorizado = Number(activo.valorizado) || 0;
+      const gananciaDinero = Number(activo.gananciaDinero) || 0;
 
-    return totalLetrasPesos / cotizacionCCL;
-  }
+      return {
+        valorizado: acc.valorizado + valorizado,
+        gananciaDinero: acc.gananciaDinero + gananciaDinero
+      };
+    }, { valorizado: 0, gananciaDinero: 0 });
 
-  private calculateAccionesAmount(activos: any[], cotizacionCCL: number): number {
-    const accionesActivo = activos.filter(activo =>
-      activo?.titulo?.tipo !== 'Letras'
-    );
+    const valorizadoDolares = totales.valorizado / cotizacion;
+    const gananciaDineroDolares = totales.gananciaDinero / cotizacion;
 
-    const totalAccionesPesos = accionesActivo.reduce((total, activo) => {
-      const valorizado = Number(activo?.valorizado) || 0;
-      return total + valorizado;
-    }, 0);
+    // Calcular ganancia porcentual: (valorActual - valorInicial) / valorInicial * 100
+    const valorInicial = valorizadoDolares - gananciaDineroDolares;
+    const gananciaPorc = valorInicial !== 0 ? (gananciaDineroDolares / valorInicial) * 100 : 0;
 
-    return totalAccionesPesos / cotizacionCCL;
+    return {
+      valorizado: valorizadoDolares,
+      gananciaDinero: gananciaDineroDolares,
+      gananciaPorc: gananciaPorc
+    };
   }
 
   private calculateCryptoAmount(portfolioBinance: any[]): number {
@@ -158,53 +171,58 @@ export class PortfolioService {
   }
 
   private buildCategoriesResponse(calculations: any) {
-    const { dolares, acciones, crypto, total } = calculations;
+    const { cedears, acciones, crypto, total } = calculations;
 
+    const gananciaCrypto = (crypto - 3410); //TODO:
+    const gananciaCryptoPorc = (crypto - 3410) / 3410; //TODO:
     const categories = [
       {
         name: 'TOTAL',
-        amount: Math.round(calculations.total * 100) / 100,
+        amount: Math.round(total * 100) / 100,
         color: '#000000',
-        percentage: total > 0 ? (total / total) * 100 : 0,
-        uninvested: 1704 + 3410 + 3410,
-        difference: (Math.round(total * 100) / 100) - (1704 + 3410 + 3410),
+        percentage: 100,
+        percentageGain:
+          ((cedears.gananciaDinero + acciones.gananciaDinero + gananciaCrypto) /
+            (total - cedears.gananciaDinero - acciones.gananciaDinero - gananciaCrypto)) * 100,
+        amountGain: cedears.gananciaDinero + acciones.gananciaDinero + gananciaCrypto,
         icon: '',
         type: 'total'
       },
       {
-        name: 'DÓLARES',
-        amount: Math.round(dolares * 100) / 100,
+        name: 'CEDEARS',
+        amount: Math.round(cedears.valorizado * 100) / 100,
         color: '#4BC0C0',
-        percentage: total > 0 ? (dolares / total) * 100 : 0,
-        uninvested: 1704,
-        difference: (Math.round(dolares * 100) / 100) - 1704,
+        percentage: total > 0 ? (cedears.valorizado / total) * 100 : 0,
+        percentageGain: cedears.gananciaPorc,
+        amountGain: cedears.gananciaDinero,
         icon: 'attach_money',
-        type: 'dollars'
+        type: 'cedears'
       },
       {
         name: 'ACCIONES',
-        amount: Math.round(acciones * 100) / 100,
+        amount: Math.round(acciones.valorizado * 100) / 100,
         color: '#9966FF',
-        percentage: total > 0 ? (acciones / total) * 100 : 0,
-        uninvested: 3410,
-        difference: (Math.round(acciones * 100) / 100) - 3410,
+        percentage: total > 0 ? (acciones.valorizado / total) * 100 : 0,
+        percentageGain: acciones.gananciaPorc,
+        amountGain: acciones.gananciaDinero,
         icon: 'bar_chart',
         type: 'stocks'
-
       },
       {
         name: 'CRYPTOMONEDAS',
         amount: Math.round(crypto * 100) / 100,
         color: '#FF9F40',
         percentage: total > 0 ? (crypto / total) * 100 : 0,
-        uninvested: 3410,
-        difference: (Math.round(acciones * 100) / 100) - 3410,
+        percentageGain: crypto > 0 ? gananciaCryptoPorc * 100 : 0,
+        amountGain: gananciaCrypto,
         icon: 'currency_bitcoin',
         type: 'crypto'
       }
     ].map(cat => ({
       ...cat,
-      percentage: Math.round(cat.percentage * 10) / 10
+      percentage: Math.round(cat.percentage * 10) / 10,
+      percentageGain: Math.round(cat.percentageGain * 100) / 100,
+      amountGain: cat.amountGain.toFixed(2)
     }));
 
     return {
