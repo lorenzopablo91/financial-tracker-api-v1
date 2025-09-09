@@ -33,7 +33,6 @@ export class BinanceBaseService {
         this.getServerTime().subscribe({
             next: (serverTime) => {
                 this.serverTimeOffset = serverTime - Date.now();
-                this.logger.debug(`Server time offset: ${this.serverTimeOffset}ms`);
             },
             error: (error) => this.logger.warn('Failed to sync server time:', error),
         });
@@ -49,8 +48,6 @@ export class BinanceBaseService {
         const url = BinanceBaseHelper.buildUrl(this.baseUrl, endpoint, params);
         const headers = this.binanceAuthService.createPublicHeaders();
 
-        this.logger.debug(`Binance Public API: ${url}`);
-
         return this.httpService.get(url, { headers }).pipe(
             BinanceBaseHelper.mapResponse<T>(),
             BinanceBaseHelper.withErrorHandler<T>(),
@@ -61,8 +58,6 @@ export class BinanceBaseService {
         const extendedParams = { ...params, recvWindow: 60000, omitZeroBalances: true };
         const signedRequest = this.binanceAuthService.createSignedRequest(endpoint, extendedParams);
         const fullUrl = `${this.baseUrl}${signedRequest.url}`;
-
-        this.logger.debug(`Binance Signed API: ${endpoint}`);
 
         return this.httpService.get(fullUrl, { headers: signedRequest.headers }).pipe(
             BinanceBaseHelper.mapResponse<T>(),
@@ -83,7 +78,7 @@ export class BinanceBaseService {
                     const total = parseFloat(balance.free) + parseFloat(balance.locked);
                     if (total > 0) balances[balance.asset] = total;
                 });
-                this.logger.log(`Retrieved balances for ${Object.keys(balances).length} assets`);
+
                 return balances;
             }),
         );
@@ -111,7 +106,7 @@ export class BinanceBaseService {
             map((results) => {
                 const priceMap: Record<string, number> = {};
                 results.forEach((r) => r && (priceMap[r.symbol] = r.price));
-                this.logger.log(`Retrieved prices for ${Object.keys(priceMap).length}/${validSymbols.length} symbols`);
+
                 if (Object.keys(priceMap).length === 0) throw new Error('No cryptocurrency prices could be fetched');
                 return priceMap;
             }),
@@ -138,7 +133,6 @@ export class BinanceBaseService {
                             .filter((c) => c.valueUSD >= this.MIN_USD_VALUE)
                             .sort((a, b) => b.valueUSD - a.valueUSD);
 
-                        this.logger.log(`Processed ${cryptoData.length} cryptocurrencies with value >= $${this.MIN_USD_VALUE}`);
                         return cryptoData;
                     }),
                 );

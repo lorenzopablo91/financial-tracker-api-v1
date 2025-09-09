@@ -103,13 +103,6 @@ export class PortfolioService {
     // Calcular crypto
     const totalCrypto = this.calculateCryptoAmount(portfolioBinance);
 
-    // Log de resumen
-    this.logger.log(
-      `Portfolio calculado - CEDEARS: $${cedearsData.valorizado.toFixed(2)} (${cedearsData.gananciaPorc.toFixed(2)}%), ` +
-      `Acciones: $${accionesData.valorizado.toFixed(2)} (${accionesData.gananciaPorc.toFixed(2)}%), ` +
-      `Crypto: $${totalCrypto.toFixed(2)}`
-    );
-
     return {
       cedears: {
         valorizado: cedearsData.valorizado,
@@ -250,31 +243,26 @@ export class PortfolioService {
 
   // Obtener portafolio USA
   getPortfolioUsa(): Observable<any> {
-    this.logger.log('Obteniendo portafolio USA...');
     return this.iolService['get'](IOL_ENDPOINTS.PORTFOLIO_USA);
   }
 
   // Obtener portafolio Argentina
   getPortfolioArg(): Observable<any> {
-    this.logger.log('Obteniendo portafolio Argentina...');
     return this.iolService['get'](IOL_ENDPOINTS.PORTFOLIO_ARG);
   }
 
   // Obtener precios de crypto específicas
   getCryptoPrices(symbols: string[]): Observable<Record<string, number>> {
-    this.logger.log(`Obteniendo precios para: ${symbols.join(', ')}`);
     return this.binanceService.getCryptoPrices(symbols);
   }
 
   // Obtener portafolio de criptomonedas
   getPortfolioCrypto(): Observable<CryptoData[]> {
-    this.logger.log('Obteniendo portafolio de criptomonedas...');
     return this.binanceService.getCryptoData();
   }
 
   // Obtener solo balances de crypto
   getCryptoBalances(): Observable<Record<string, number>> {
-    this.logger.log('Obteniendo balances de criptomonedas...');
     return this.binanceService.getAccountBalances();
   }
 

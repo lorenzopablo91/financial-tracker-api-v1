@@ -42,8 +42,6 @@ export class BinanceAuthService {
             'Content-Type': 'application/json',
         };
 
-        this.logger.debug(`Binance signed request created for: ${endpoint}`);
-
         return {
             url,
             headers,

@@ -31,7 +31,6 @@ export class DolarBaseService {
     }
 
     const url = `${this.baseUrl}${endpoint}`;
-    this.logger.debug(`Requesting cotización for ${tipo}: ${url}`);
 
     return this.httpService.get<DolarCotizacion>(url, {
       headers: {
@@ -49,8 +48,6 @@ export class DolarBaseService {
     const tipos = Object.values(DOLAR_TYPES);
 
     const requests = tipos.map(tipo => this.getCotizacionPorTipo(tipo));
-
-    this.logger.log('Obteniendo todas las cotizaciones...');
 
     return forkJoin(requests).pipe(
       map(cots => {

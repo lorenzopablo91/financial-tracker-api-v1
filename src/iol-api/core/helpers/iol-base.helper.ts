@@ -1,6 +1,5 @@
 import { HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { AxiosError } from 'axios';
-import { IolApiResponse } from '../interfaces/iol-response.interface';
 
 export class IolBaseHelper {
     private static readonly logger = new Logger('IolApiHelper');
@@ -36,13 +35,4 @@ export class IolBaseHelper {
         );
     }
 
-    // Formato de respuestas
-    static formatResponse<T>(data: T, additionalInfo?: Record<string, any>): IolApiResponse<T> {
-        return {
-            success: true,
-            data,
-            timestamp: new Date().toISOString(),
-            ...additionalInfo,
-        };
-    }
 }
