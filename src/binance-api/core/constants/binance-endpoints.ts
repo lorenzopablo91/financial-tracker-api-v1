@@ -3,15 +3,14 @@ export const BINANCE_ENDPOINTS = {
     TICKER_PRICE: '/api/v3/ticker/price',
     TICKER_24HR: '/api/v3/ticker/24hr',
     EXCHANGE_INFO: '/api/v3/exchangeInfo',
+    PRICE: '/api/v3/klines',
 
     // Private endpoints (require signature)
     ACCOUNT_INFO: '/api/v3/account',
 
-    // Savings endpoints
-    SAVINGS_BALANCE: '/sapi/v1/lending/union/account',
+    // Savings endpoints (require signature)
+    FIAT_ORDERS: '/sapi/v1/fiat/payments',
 
-    // Spot endpoints
-    SPOT_ACCOUNT: '/api/v3/account',
 } as const;
 
 export const CRYPTO_METADATA = {

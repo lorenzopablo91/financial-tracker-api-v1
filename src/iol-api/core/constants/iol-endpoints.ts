@@ -3,7 +3,7 @@ export const IOL_ENDPOINTS = {
   TOKEN: '/token',
 
   // Portfolio
-  PORTFOLIO_USA: '/portafolio/usa',
+  PORTFOLIO_USA: '/portafolio/estados-unidos',
   PORTFOLIO_ARG: '/portafolio/argentina',
 
   // Accounts

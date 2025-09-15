@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { Observable, switchMap, map, catchError, forkJoin, of } from 'rxjs';
+import { Observable, switchMap, map, catchError, forkJoin, of, throwError } from 'rxjs';
 import { BINANCE_ENDPOINTS, CRYPTO_METADATA } from '../../constants/binance-endpoints';
 import { BinanceAuthService } from 'src/binance-api/auth/services/binance-auth/binance-auth.service';
 import {
@@ -9,6 +9,7 @@ import {
     BinancePriceData,
     CryptoData,
     BinanceServerTimeResponse,
+    BinanceSpotOrders,
 } from '../../interfaces/binance-response.interface';
 import { ConfigService } from '@nestjs/config';
 import { BinanceBaseHelper } from '../../helpers/binance-base.helper';
@@ -148,4 +149,163 @@ export class BinanceBaseService {
         const params = symbol ? { symbol: symbol.toUpperCase() } : {};
         return this.makePublicRequest(BINANCE_ENDPOINTS.TICKER_24HR, params);
     }
+
+    getFiatOrders(beginDate: string): Observable<BinanceSpotOrders[]> {
+        const timestamp = Date.now();
+        const transactionType = '0';
+        const beginTime = new Date(beginDate).getTime();
+        const endTime = Date.now();
+
+        return this.makeSignedRequest<{ code: string; message: string; data: BinanceSpotOrders[] }>(
+            BINANCE_ENDPOINTS.FIAT_ORDERS,
+            {
+                timestamp,
+                transactionType,
+                beginTime,
+                endTime,
+            }
+        ).pipe(
+            map((response) => response.data)
+        );
+    }
+
+    getFiatOrdersAverages(beginDate: string): Observable<Record<string, number>> {
+        return this.getFiatOrders(beginDate).pipe(
+            map((orders) => {
+                const result: Record<string, { totalAmount: number; totalCost: number }> = {};
+
+                orders.forEach((order) => {
+                    const crypto = order.cryptoCurrency;
+                    const amount = parseFloat(order.obtainAmount);
+                    const price = parseFloat(order.price);
+                    const cost = amount * price;
+
+                    if (!result[crypto]) {
+                        result[crypto] = { totalAmount: 0, totalCost: 0 };
+                    }
+
+                    result[crypto].totalAmount += amount;
+                    result[crypto].totalCost += cost;
+                });
+
+                const averages: Record<string, number> = {};
+                Object.keys(result).forEach((crypto) => {
+                    const { totalAmount, totalCost } = result[crypto];
+                    if (totalAmount > 0) {
+                        averages[crypto] = totalCost / totalAmount;
+                    }
+                });
+
+                return averages;
+            })
+        );
+    }
+
+    getFiatOrdersAveragesUSD(beginDate: string): Observable<Record<string, number>> {
+        return this.getFiatOrders(beginDate).pipe(
+            switchMap((orders) => {
+                if (!orders || orders.length === 0) {
+                    this.logger.warn('No orders found for the given period');
+                    return of({});
+                }
+
+                const observables = orders.map(order => {
+                    const crypto = order.cryptoCurrency;
+                    const timestamp = order.createTime;
+                    const symbol = crypto + 'USDT';
+
+                    return this.getHistoricalPriceUSD(symbol, timestamp).pipe(
+                        map(priceUSD => ({
+                            crypto,
+                            amount: parseFloat(order.obtainAmount),
+                            costUSD: parseFloat(order.obtainAmount) * priceUSD
+                        })),
+                        catchError(error => {
+                            this.logger.error(`Error processing order for ${crypto}:`, error);
+                            return of({
+                                crypto,
+                                amount: 0,
+                                costUSD: 0
+                            });
+                        })
+                    );
+                });
+
+                return forkJoin(observables).pipe(
+                    map(results => {
+                        const aggregated: Record<string, { totalAmount: number; totalCost: number }> = {};
+
+                        results.forEach(({ crypto, amount, costUSD }) => {
+                            if (!aggregated[crypto]) aggregated[crypto] = { totalAmount: 0, totalCost: 0 };
+                            aggregated[crypto].totalAmount += amount;
+                            aggregated[crypto].totalCost += costUSD;
+                        });
+
+                        const averages: Record<string, number> = {};
+                        Object.keys(aggregated).forEach(crypto => {
+                            const { totalAmount, totalCost } = aggregated[crypto];
+                            if (totalAmount > 0) {
+                                averages[crypto] = totalCost / totalAmount;
+                            }
+                        });
+
+                        return averages;
+                    })
+                );
+            }),
+            catchError(error => {
+                this.logger.error('Error in getFiatOrdersAveragesUSD:', error);
+                return of({});
+            })
+        );
+    }
+
+    getHistoricalPriceUSD(symbol: string, timestamp: number): Observable<number> {
+        if (!symbol || symbol.trim() === '') {
+            this.logger.error('Invalid symbol provided:', symbol);
+            return throwError(() => new Error(`Invalid symbol: ${symbol}`));
+        }
+
+        if (!timestamp || timestamp <= 0) {
+            this.logger.error('Invalid timestamp provided:', timestamp);
+            return throwError(() => new Error(`Invalid timestamp: ${timestamp}`));
+        }
+
+        const interval = '1d';
+        const startTime = timestamp;
+        const endTime = timestamp + 24 * 60 * 60 * 1000;
+
+        const requestParams = {
+            symbol: symbol.trim(),
+            interval,
+            startTime,
+            endTime,
+            limit: 1,
+        };
+
+        return this.makePublicRequest<BinancePriceData>(BINANCE_ENDPOINTS.PRICE, requestParams).pipe(
+            map((prices) => {
+                if (!prices || !Array.isArray(prices) || prices.length === 0) {
+                    throw new Error(`No price data available for ${symbol} at ${new Date(timestamp).toISOString()}`);
+                }
+
+                const kline = prices[0];
+                if (!kline || kline.length < 5) {
+                    throw new Error(`Invalid kline data for ${symbol}`);
+                }
+
+                const closePrice = parseFloat(kline[4]);
+                if (isNaN(closePrice) || closePrice <= 0) {
+                    throw new Error(`Invalid price data for ${symbol}: ${kline[4]}`);
+                }
+
+                return closePrice;
+            }),
+            catchError((error) => {
+                this.logger.warn(`Failed to fetch price for ${symbol}:`, error.message);
+                return of(1);
+            })
+        );
+    }
+
 }

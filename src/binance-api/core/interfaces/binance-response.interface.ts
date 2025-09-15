@@ -65,3 +65,17 @@ export interface BinanceTicker24hr {
   lastId: number;
   count: number;
 }
+
+export interface BinanceSpotOrders {
+  orderNo: string;
+  sourceAmount: string;
+  fiatCurrency: string;
+  obtainAmount: string;
+  cryptoCurrency: string;
+  totalFee: string;
+  price: string;
+  status: string;
+  paymentMethod: string;
+  createTime: number;
+  updateTime: number;
+}

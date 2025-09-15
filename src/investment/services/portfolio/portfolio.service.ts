@@ -16,15 +16,17 @@ export class PortfolioService {
     private readonly binanceService: BinanceBaseService,
   ) { }
 
-  getCategories(): Observable<any> {
-    return this.fetchPortfolioData().pipe(
-      map(({ portfolioIOL, cotizacionCCL, portfolioBinance }) => {
+  // Obtener portafolio total
+  getCategories(beginTime: string): Observable<any> {
+    return this.fetchPortfolioData(beginTime).pipe(
+      map(({ portfolioIOL, cotizacionCCL, portfolioBinance, cryptoOrders }) => {
         this.validateCriticalServices(portfolioIOL, cotizacionCCL);
 
         const calculations = this.calculatePortfolioAmounts(
           portfolioIOL,
           cotizacionCCL,
-          portfolioBinance
+          portfolioBinance,
+          cryptoOrders
         );
 
         return this.buildCategoriesResponse(calculations);
@@ -33,9 +35,39 @@ export class PortfolioService {
     );
   }
 
+  // Obtener portafolio USA
+  getPortfolioUsa(): Observable<any> {
+    return this.iolService['get'](IOL_ENDPOINTS.PORTFOLIO_USA);
+  }
+
+  // Obtener portafolio Argentina
+  getPortfolioArg(): Observable<any> {
+    return this.iolService['get'](IOL_ENDPOINTS.PORTFOLIO_ARG);
+  }
+
+  // Obtener precios de crypto específicas
+  getCryptoPrices(symbols: string[]): Observable<Record<string, number>> {
+    return this.binanceService.getCryptoPrices(symbols);
+  }
+
+  // Obtener portafolio de criptomonedas
+  getPortfolioCrypto(): Observable<CryptoData[]> {
+    return this.binanceService.getCryptoData();
+  }
+
+  // Obtener solo balances de crypto
+  getCryptoBalances(): Observable<Record<string, number>> {
+    return this.binanceService.getAccountBalances();
+  }
+
+  // Obtener órdenes crypto
+  getCryptoOrders(beginDate: string): Observable<Record<string, number>> {
+    return this.binanceService.getFiatOrdersAveragesUSD(beginDate);
+  }
+
   // ===== MÉTODOS PRIVADOS =====
-  private fetchPortfolioData(): Observable<any> {
-    return forkJoin({
+  private fetchPortfolioData(beginTime: string): Observable<any> {
+    const baseObservables = {
       portfolioIOL: this.getPortfolioArg().pipe(
         catchError((error) => {
           this.logger.error('Error obteniendo portfolio IOL:', error);
@@ -54,7 +86,18 @@ export class PortfolioService {
           return of([]);
         })
       )
+    };
+
+    return forkJoin({
+      ...baseObservables,
+      cryptoOrders: this.binanceService.getFiatOrdersAveragesUSD(beginTime).pipe(
+        catchError((error) => {
+          this.logger.error('Error obteniendo órdenes crypto:', error);
+          return of({});
+        })
+      )
     });
+
   }
 
   private validateCriticalServices(portfolioIOL: any, cotizacionCCL: any): void {
@@ -85,7 +128,7 @@ export class PortfolioService {
     }
   }
 
-  private calculatePortfolioAmounts(portfolioIOL: any, cotizacionCCL: any, portfolioBinance: any[]) {
+  private calculatePortfolioAmounts(portfolioIOL: any, cotizacionCCL: any, portfolioBinance: any[], cryptoOrders?: Record<string, number>) {
     const activos = portfolioIOL.activos;
 
     // Validar portfolio Binance
@@ -100,8 +143,8 @@ export class PortfolioService {
     // Calcular acciones con ganancias
     const accionesData = this.calculateActivoAmountWithGains('ACCIONES', activos, cotizacionCCL.venta);
 
-    // Calcular crypto
-    const totalCrypto = this.calculateCryptoAmount(portfolioBinance);
+    // Calcular crypto con ganancias usando los costos reales
+    const cryptoData = this.calculateCryptoAmountWithGains(portfolioBinance, cryptoOrders);
 
     return {
       cedears: {
@@ -114,14 +157,20 @@ export class PortfolioService {
         gananciaDinero: accionesData.gananciaDinero,
         gananciaPorc: accionesData.gananciaPorc
       },
-      crypto: totalCrypto,
-      total: cedearsData.valorizado + accionesData.valorizado + totalCrypto,
+      crypto: {
+        valorizado: cryptoData.valorActual,
+        gananciaDinero: cryptoData.gananciaDinero,
+        gananciaPorc: cryptoData.gananciaPorc,
+        costoBasis: cryptoData.costoBasis
+      },
+      total: cedearsData.valorizado + accionesData.valorizado + cryptoData.valorActual,
       metadata: {
         iolActivos: activos.length,
         letrasEncontradas: activos.filter(a => a?.titulo?.tipo === 'Letras').length,
         accionesEncontradas: activos.filter(a => a?.titulo?.tipo !== 'Letras').length,
         cryptosEncontradas: portfolioBinance.length,
-        cotizacionCCL: cotizacionCCL.venta
+        cotizacionCCL: cotizacionCCL.venta,
+        cryptoOrdersAvailable: !!cryptoOrders && Object.keys(cryptoOrders).length > 0
       }
     };
   }
@@ -156,18 +205,64 @@ export class PortfolioService {
     };
   }
 
-  private calculateCryptoAmount(portfolioBinance: any[]): number {
-    return portfolioBinance.reduce((sum, crypto) => {
+  private calculateCryptoAmountWithGains(portfolioBinance: any[], cryptoOrders?: Record<string, number>) {
+    // Calcular valor actual total
+    const valorActual = portfolioBinance.reduce((sum, crypto) => {
       const valueUSD = Number(crypto?.valueUSD) || 0;
       return sum + valueUSD;
     }, 0);
+
+    // Si no hay órdenes de crypto, usar lógica anterior con advertencia
+    if (!cryptoOrders || Object.keys(cryptoOrders).length === 0) {
+      this.logger.warn('No se encontraron órdenes de crypto, usando costo base estimado');
+      return {
+        valorActual,
+        gananciaDinero: 0,
+        gananciaPorc: 0,
+        costoBasis: 0
+      };
+    }
+
+    // Calcular costos
+    let costoBasisTotal = 0;
+    let cryptosConCosto = 0;
+    let cryptosEnPortfolio = 0;
+
+    portfolioBinance.forEach(crypto => {
+      const symbol = crypto.symbol;
+      const cantidad = Number(crypto.amount) || 0;
+
+      // Solo procesar cryptos con cantidad positiva
+      if (cantidad > 0) {
+        cryptosEnPortfolio++;
+        const precioPromedio = cryptoOrders[symbol];
+
+        if (precioPromedio && precioPromedio > 0) {
+          const costoBase = precioPromedio * cantidad;
+          costoBasisTotal += costoBase;
+          cryptosConCosto++;
+        } else {
+          this.logger.warn(`❌ ${symbol}: No se encontró precio promedio en las órdenes`);
+        }
+      } else {
+        this.logger.log(`Skipping ${symbol}: cantidad=${cantidad} (zero or negative)`);
+      }
+    });
+
+    const gananciaDinero = valorActual - costoBasisTotal;
+    const gananciaPorc = costoBasisTotal > 0 ? (gananciaDinero / costoBasisTotal) * 100 : 0;
+
+    return {
+      valorActual,
+      gananciaDinero,
+      gananciaPorc,
+      costoBasis: costoBasisTotal
+    };
   }
 
   private buildCategoriesResponse(calculations: any) {
     const { cedears, acciones, crypto, total } = calculations;
 
-    const gananciaCrypto = (crypto - 3410); //TODO:
-    const gananciaCryptoPorc = (crypto - 3410) / 3410; //TODO:
     const categories = [
       {
         name: 'TOTAL',
@@ -175,9 +270,9 @@ export class PortfolioService {
         color: '#000000',
         percentage: 100,
         percentageGain:
-          ((cedears.gananciaDinero + acciones.gananciaDinero + gananciaCrypto) /
-            (total - cedears.gananciaDinero - acciones.gananciaDinero - gananciaCrypto)) * 100,
-        amountGain: cedears.gananciaDinero + acciones.gananciaDinero + gananciaCrypto,
+          ((cedears.gananciaDinero + acciones.gananciaDinero + crypto.gananciaDinero) /
+            (total - cedears.gananciaDinero - acciones.gananciaDinero - crypto.gananciaDinero)) * 100,
+        amountGain: cedears.gananciaDinero + acciones.gananciaDinero + crypto.gananciaDinero,
         icon: '',
         type: 'total'
       },
@@ -203,11 +298,11 @@ export class PortfolioService {
       },
       {
         name: 'CRYPTOMONEDAS',
-        amount: Math.round(crypto * 100) / 100,
+        amount: Math.round(crypto.valorizado * 100) / 100,
         color: '#FF9F40',
-        percentage: total > 0 ? (crypto / total) * 100 : 0,
-        percentageGain: crypto > 0 ? gananciaCryptoPorc * 100 : 0,
-        amountGain: gananciaCrypto,
+        percentage: total > 0 ? (crypto.valorizado / total) * 100 : 0,
+        percentageGain: crypto.gananciaPorc,
+        amountGain: crypto.gananciaDinero,
         icon: 'currency_bitcoin',
         type: 'crypto'
       }
@@ -223,6 +318,7 @@ export class PortfolioService {
       categories,
       metadata: {
         ...calculations.metadata,
+        cryptoCostBasis: crypto.costoBasis,
         timestamp: new Date().toISOString()
       }
     };
@@ -239,31 +335,6 @@ export class PortfolioService {
       'Servicio temporalmente no disponible',
       HttpStatus.SERVICE_UNAVAILABLE
     );
-  }
-
-  // Obtener portafolio USA
-  getPortfolioUsa(): Observable<any> {
-    return this.iolService['get'](IOL_ENDPOINTS.PORTFOLIO_USA);
-  }
-
-  // Obtener portafolio Argentina
-  getPortfolioArg(): Observable<any> {
-    return this.iolService['get'](IOL_ENDPOINTS.PORTFOLIO_ARG);
-  }
-
-  // Obtener precios de crypto específicas
-  getCryptoPrices(symbols: string[]): Observable<Record<string, number>> {
-    return this.binanceService.getCryptoPrices(symbols);
-  }
-
-  // Obtener portafolio de criptomonedas
-  getPortfolioCrypto(): Observable<CryptoData[]> {
-    return this.binanceService.getCryptoData();
-  }
-
-  // Obtener solo balances de crypto
-  getCryptoBalances(): Observable<Record<string, number>> {
-    return this.binanceService.getAccountBalances();
   }
 
 }
