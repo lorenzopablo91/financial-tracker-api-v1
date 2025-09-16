@@ -3,7 +3,7 @@ import { catchError, forkJoin, map, Observable, of } from 'rxjs';
 import { IOL_ENDPOINTS } from '../../../iol-api/core/constants/iol-endpoints';
 import { IolBaseService } from '../../../iol-api/core/services/iol-base/iol-base.service';
 import { DolarBaseService } from '../../../dolar-api/core/services/dolar-base/dolar-base.service';
-import { BinanceBaseService } from '../../../binance-api/core/services/binance-base/binance-base.service';
+import { BinanceMainService } from '../../../binance-api/core/services/binance-main.service';
 import { CryptoData } from '../../../binance-api/core/interfaces/binance-response.interface';
 
 @Injectable()
@@ -13,7 +13,7 @@ export class PortfolioService {
   constructor(
     private readonly dolarBaseService: DolarBaseService,
     private readonly iolService: IolBaseService,
-    private readonly binanceService: BinanceBaseService,
+    private readonly binanceService: BinanceMainService,
   ) { }
 
   // Obtener portafolio total

@@ -2,7 +2,14 @@ import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule } from '@nestjs/config';
 import { BinanceAuthService } from './auth/services/binance-auth/binance-auth.service';
-import { BinanceBaseService } from './core/services/binance-base/binance-base.service';
+import { BinanceHttpService } from './core/services/binance-http.service';
+import { BinanceTimeService } from './core/services/binance-time.service';
+import { BinanceAccountService } from './core/services/binance-account.service';
+import { BinancePriceService } from './core/services/binance-price.service';
+import { BinanceCryptoService } from './core/services/binance-crypto.service';
+import { BinanceMarketService } from './core/services/binance-market.service';
+import { BinanceOrderService } from './core/services/binance-order.service';
+import { BinanceMainService } from './core/services/binance-main.service';
 
 @Module({
   imports: [
@@ -14,11 +21,20 @@ import { BinanceBaseService } from './core/services/binance-base/binance-base.se
   ],
   providers: [
     BinanceAuthService,
-    BinanceBaseService,
+
+    BinanceHttpService,
+    BinanceTimeService,
+    
+    BinanceAccountService,
+    BinancePriceService,
+    BinanceOrderService,
+    BinanceCryptoService,
+    BinanceMarketService,
+    
+    BinanceMainService,
   ],
   exports: [
-    BinanceAuthService,
-    BinanceBaseService,
+    BinanceMainService
   ],
 })
 export class BinanceApiModule { }
