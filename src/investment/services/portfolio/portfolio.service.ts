@@ -5,16 +5,23 @@ import { IolBaseService } from '../../../iol-api/core/services/iol-base/iol-base
 import { DolarBaseService } from '../../../dolar-api/core/services/dolar-base/dolar-base.service';
 import { BinanceMainService } from '../../../binance-api/core/services/binance-main.service';
 import { CryptoData } from '../../../binance-api/core/interfaces/binance-response.interface';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PortfolioService {
   private readonly logger = new Logger(PortfolioService.name);
+  private readonly percentageGainPrevious: number = 0;
+  private readonly amountGainPrevious: number = 0;
 
   constructor(
     private readonly dolarBaseService: DolarBaseService,
     private readonly iolService: IolBaseService,
     private readonly binanceService: BinanceMainService,
-  ) { }
+    private readonly configService: ConfigService
+  ) {
+    this.percentageGainPrevious = parseFloat(this.configService.get<string>('PERCENTAGE_GAIN_PREVIOUS') || '0') || 0;
+    this.amountGainPrevious = parseFloat(this.configService.get<string>('AMOUNT_GAIN_PREVIOUS') || '0') || 0
+  }
 
   // Obtener portafolio total
   getCategories(beginTime: string): Observable<any> {
@@ -146,11 +153,14 @@ export class PortfolioService {
     // Calcular crypto con ganancias usando los costos reales
     const cryptoData = this.calculateCryptoAmountWithGains(portfolioBinance, cryptoOrders);
 
+    const compoundInterestCedearsPercentage = (((1 + this.percentageGainPrevious) * 1 + (cedearsData.gananciaPorc / 100)) - 1) * 100;
+    const compoundInterestCedearsAmount = this.amountGainPrevious + (1 + cedearsData.gananciaPorc);
+
     return {
       cedears: {
         valorizado: cedearsData.valorizado,
-        gananciaDinero: cedearsData.gananciaDinero,
-        gananciaPorc: cedearsData.gananciaPorc
+        gananciaDinero: compoundInterestCedearsAmount,
+        gananciaPorc: compoundInterestCedearsPercentage
       },
       acciones: {
         valorizado: accionesData.valorizado,
