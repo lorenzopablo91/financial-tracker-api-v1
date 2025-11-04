@@ -6,6 +6,7 @@ import { InvestmentModule } from './investment/investment.module';
 import { DolarApiModule } from './dolar-api/dolar-api.module';
 import { IolApiModule } from './iol-api/iol-api.module';
 import { BinanceApiModule } from './binance-api/binance-api.module';
+import { PrismaModule } from 'prisma/prisma.module';
 
 @Module({
   imports: [
@@ -15,7 +16,8 @@ import { BinanceApiModule } from './binance-api/binance-api.module';
     InvestmentModule,
     DolarApiModule,
     IolApiModule,
-    BinanceApiModule
+    BinanceApiModule,
+    PrismaModule
   ],
   controllers: [AppController],
   providers: [AppService],

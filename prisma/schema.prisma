@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Portafolio {
+  id                  String   @id @default(uuid()) @db.Uuid
+  nombre              String   @db.VarChar(255)
+  descripcion         String?  @db.Text
+  capitalInicial      Decimal  @default(0) @map("capital_inicial") @db.Decimal(18, 2)
+  gananciasRealizadas Decimal  @default(0) @map("ganancias_realizadas") @db.Decimal(18, 2)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  
+  activos     Activo[]
+  operaciones Operacion[]
+  snapshots   PortafolioSnapshot[]
+  
+  @@map("portafolios")
+}
+
+model Activo {
+  id                    String     @id @default(uuid()) @db.Uuid
+  nombre                String     @db.VarChar(255)
+  prefijo               String     @db.VarChar(50)
+  cantidad              Decimal    @db.Decimal(18, 8)
+  costoPromedioUSD      Decimal    @map("costo_promedio_usd") @db.Decimal(18, 8)
+  costoPromedioARS      Decimal?   @map("costo_promedio_ars") @db.Decimal(18, 2)
+  tipoCambioPromedio    Decimal?   @map("tipo_cambio_promedio") @db.Decimal(10, 4)
+  tipo                  TipoActivo
+  portafolioId          String     @map("portafolio_id") @db.Uuid
+  createdAt             DateTime   @default(now()) @map("created_at")
+  updatedAt             DateTime   @updatedAt @map("updated_at")
+  
+  portafolio  Portafolio  @relation(fields: [portafolioId], references: [id], onDelete: Cascade)
+  operaciones Operacion[]
+  
+  @@unique([portafolioId, prefijo], name: "portafolioId_prefijo")
+  @@index([portafolioId])
+  @@map("activos")
+}
+
+model Operacion {
+  id                 String         @id @default(uuid()) @db.Uuid
+  portafolioId       String         @map("portafolio_id") @db.Uuid
+  activoId           String?        @map("activo_id") @db.Uuid
+  tipo               TipoOperacion
+  cantidad           Decimal?       @db.Decimal(18, 8)
+  precioUSD          Decimal?       @map("precio_usd") @db.Decimal(18, 8)
+  precioARS          Decimal?       @map("precio_ars") @db.Decimal(18, 2)
+  tipoCambio         Decimal?       @map("tipo_cambio") @db.Decimal(10, 4)
+  montoUSD           Decimal        @map("monto_usd") @db.Decimal(18, 2)
+  costoBaseVendido   Decimal?       @map("costo_base_vendido") @db.Decimal(18, 2)
+  gananciaRealizada  Decimal?       @map("ganancia_realizada") @db.Decimal(18, 2)
+  notas              String?        @db.Text
+  fecha              DateTime       @default(now())
+  createdAt          DateTime       @default(now()) @map("created_at")
+  
+  portafolio Portafolio @relation(fields: [portafolioId], references: [id], onDelete: Cascade)
+  activo     Activo?    @relation(fields: [activoId], references: [id], onDelete: SetNull)
+  
+  @@index([portafolioId, fecha])
+  @@index([activoId])
+  @@map("operaciones")
+}
+
+model PortafolioSnapshot {
+  id                    String   @id @default(uuid()) @db.Uuid
+  portafolioId          String   @map("portafolio_id") @db.Uuid
+  capitalInicial        Decimal  @map("capital_inicial") @db.Decimal(18, 2)
+  gananciasRealizadas   Decimal  @map("ganancias_realizadas") @db.Decimal(18, 2)
+  valorActual           Decimal  @map("valor_actual") @db.Decimal(18, 2)
+  gananciasNoRealizadas Decimal  @map("ganancias_no_realizadas") @db.Decimal(18, 2)
+  totalInvertido        Decimal  @map("total_invertido") @db.Decimal(18, 2)
+  gananciaTotal         Decimal  @map("ganancia_total") @db.Decimal(18, 2)
+  gananciaTotalPorc     Decimal  @map("ganancia_total_porc") @db.Decimal(8, 4)
+  snapshot              Json
+  createdAt             DateTime @default(now()) @map("created_at")
+  
+  portafolio Portafolio @relation(fields: [portafolioId], references: [id], onDelete: Cascade)
+  
+  @@index([portafolioId, createdAt])
+  @@map("portafolio_snapshots")
+}
+
+enum TipoActivo {
+  Criptomoneda
+  Cedear
+  Accion
+}
+
+enum TipoOperacion {
+  APORTE
+  RETIRO
+  COMPRA
+  VENTA
+}
