@@ -4,6 +4,7 @@ import { IolApiModule } from 'src/iol-api/iol-api.module';
 import { BinanceApiModule } from 'src/binance-api/binance-api.module';
 
 // Controllers (endpoints)
+import { HealthController } from './controllers/helth/health.controller';
 import { PortfolioController } from './controllers/portfolio/portfolio.controller';
 
 // Services (lógica de negocio)
@@ -16,8 +17,8 @@ import { PortfolioService } from './services/portfolio/portfolio.service';
     BinanceApiModule
   ],
   controllers: [
+    HealthController,
     PortfolioController
-    
   ],
   providers: [
     PortfolioService
