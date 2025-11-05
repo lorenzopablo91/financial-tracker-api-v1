@@ -5,10 +5,10 @@ import { PrismaService } from 'prisma/prisma.service';
 export class AbmService {
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma: PrismaService
   ) { }
 
-  // ===== CRUD PORTAFOLIOS =====
+  // ===== ABM PORTAFOLIOS =====
 
   async crearPortafolio(data: {
     nombre: string;

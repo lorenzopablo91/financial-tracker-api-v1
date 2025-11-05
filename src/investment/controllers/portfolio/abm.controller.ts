@@ -10,6 +10,7 @@ export class AbmController {
 
   // ===== CRUD PORTAFOLIOS =====
 
+  // Crear un portafolio
   @Post()
   async crearPortafolio(@Body() body: {
     nombre: string;
@@ -24,6 +25,7 @@ export class AbmController {
     };
   }
 
+  // Obtener todos los portafolios
   @Get()
   async obtenerPortafolios() {
     const portafolios = await this.abmService.obtenerPortafolios();
@@ -34,6 +36,7 @@ export class AbmController {
     };
   }
 
+  // Obtener un portafolio por ID
   @Get(':id')
   async obtenerPortafolio(@Param('id') id: string) {
     const portafolio = await this.abmService.obtenerPortafolio(id);
@@ -43,6 +46,7 @@ export class AbmController {
     };
   }
 
+  // Eliminar un portafolio por ID
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async eliminarPortafolio(@Param('id') id: string) {

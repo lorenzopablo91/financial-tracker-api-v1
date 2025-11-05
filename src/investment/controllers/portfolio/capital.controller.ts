@@ -10,6 +10,7 @@ export class CapitalController {
 
     // ===== OPERACIONES DE CAPITAL =====
 
+    // Agregar capital al portafolio
     @Post(':id/aporte')
     async registrarAporte(
         @Param('id') portafolioId: string,
@@ -25,6 +26,7 @@ export class CapitalController {
         };
     }
 
+    // Retirar capital del portafolio
     @Post(':id/retiro')
     async registrarRetiro(
         @Param('id') portafolioId: string,

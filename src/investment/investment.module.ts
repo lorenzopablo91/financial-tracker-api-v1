@@ -7,10 +7,12 @@ import { BinanceApiModule } from 'src/binance-api/binance-api.module';
 import { HealthController } from './controllers/helth/health.controller';
 import { AbmController } from './controllers/portfolio/abm.controller';
 import { CapitalController } from './controllers/portfolio/capital.controller';
+import { ValuacionController } from './controllers/portfolio/valuacion.controller';
 
 // Services (lógica de negocio)
 import { AbmService } from './services/portfolio/abm.service';
 import { CapitalService } from './services/portfolio/capital.service';
+import { ValuacionService } from './services/portfolio/valuacion.service';
 
 @Module({
   imports: [
@@ -21,11 +23,13 @@ import { CapitalService } from './services/portfolio/capital.service';
   controllers: [
     HealthController,
     AbmController,
-    CapitalController
+    CapitalController,
+    ValuacionController
   ],
   providers: [
     AbmService,
-    CapitalService
+    CapitalService,
+    ValuacionService
   ],
 })
 export class InvestmentModule { }
