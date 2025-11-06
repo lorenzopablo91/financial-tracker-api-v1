@@ -9,12 +9,14 @@ import { PortfolioController } from './controllers/portfolio/portfolio.controlle
 import { CapitalController } from './controllers/portfolio/capital.controller';
 import { ValuationController } from './controllers/portfolio/valuation.controller';
 import { AssetsController } from './controllers/portfolio/assets.controller';
+import { HistoryController } from './controllers/portfolio/history.controller';
 
 // Services (lógica de negocio)
 import { PortfolioService } from './services/portfolio/portfolio.service';
 import { CapitalService } from './services/portfolio/capital.service';
 import { ValuationService } from './services/portfolio/valuation.service';
 import { AssetsService } from './services/portfolio/assets.service';
+import { HistoryService } from './services/portfolio/history.service';
 
 @Module({
   imports: [
@@ -27,13 +29,15 @@ import { AssetsService } from './services/portfolio/assets.service';
     PortfolioController,
     CapitalController,
     ValuationController,
-    AssetsController
+    AssetsController,
+    HistoryController
   ],
   providers: [
     PortfolioService,
     CapitalService,
     ValuationService,
-    AssetsService
+    AssetsService,
+    HistoryService
   ],
 })
 export class InvestmentModule { }
