@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { ValuationService } from './valuation.service';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class HistoryService {
@@ -68,5 +69,43 @@ export class HistoryService {
         });
     }
 
+    // Se ejecuta todos los días a las 00:00
+    @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+    async crearSnapshotsDiarios() {
+        this.logger.log('Iniciando creación de snapshots diarios...');
+
+        try {
+            // Obtener todos los portafolios activos
+            const portafolios = await this.prisma.portafolio.findMany({
+                select: { id: true, nombre: true }
+            });
+
+            this.logger.log(`Encontrados ${portafolios.length} portafolios`);
+
+            let exitosos = 0;
+            let fallidos = 0;
+
+            // Crear snapshot para cada portafolio
+            for (const portafolio of portafolios) {
+                try {
+                    await this.crearSnapshot(portafolio.id);
+                    exitosos++;
+                    this.logger.log(`Snapshot creado para portafolio: ${portafolio.nombre}`);
+                } catch (error) {
+                    fallidos++;
+                    this.logger.error(
+                        `Error al crear snapshot para ${portafolio.nombre}:`,
+                        error.message
+                    );
+                }
+            }
+
+            this.logger.log(
+                `Snapshots completados: ${exitosos} exitosos, ${fallidos} fallidos`
+            );
+        } catch (error) {
+            this.logger.error('Error en la tarea de snapshots diarios:', error);
+        }
+    }
 
 }

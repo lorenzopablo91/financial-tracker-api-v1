@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { DolarApiModule } from 'src/dolar-api/dolar-api.module';
 import { IolApiModule } from 'src/iol-api/iol-api.module';
 import { BinanceApiModule } from 'src/binance-api/binance-api.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 // Controllers (endpoints)
 import { HealthController } from './controllers/helth/health.controller';
@@ -22,7 +23,8 @@ import { HistoryService } from './services/portfolio/history.service';
   imports: [
     DolarApiModule,
     IolApiModule,
-    BinanceApiModule
+    BinanceApiModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [
     HealthController,
