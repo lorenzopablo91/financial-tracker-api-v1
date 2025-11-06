@@ -1,11 +1,11 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
-import { AbmService } from 'src/investment/services/portfolio/abm.service';
+import { PortfolioService } from 'src/investment/services/portfolio/portfolio.service';
 
 @Controller('api/portfolio')
-export class AbmController {
+export class PortfolioController {
 
   constructor(
-    private readonly abmService: AbmService
+    private readonly portfolioService: PortfolioService
   ) { }
 
   // ===== CRUD PORTAFOLIOS =====
@@ -17,7 +17,7 @@ export class AbmController {
     descripcion?: string;
     capitalInicial?: number;
   }) {
-    const portafolio = await this.abmService.crearPortafolio(body);
+    const portafolio = await this.portfolioService.crearPortafolio(body);
     return {
       success: true,
       message: 'Portafolio creado exitosamente',
@@ -28,7 +28,7 @@ export class AbmController {
   // Obtener todos los portafolios
   @Get()
   async obtenerPortafolios() {
-    const portafolios = await this.abmService.obtenerPortafolios();
+    const portafolios = await this.portfolioService.obtenerPortafolios();
     return {
       success: true,
       count: portafolios.length,
@@ -39,7 +39,7 @@ export class AbmController {
   // Obtener un portafolio por ID
   @Get(':id')
   async obtenerPortafolio(@Param('id') id: string) {
-    const portafolio = await this.abmService.obtenerPortafolio(id);
+    const portafolio = await this.portfolioService.obtenerPortafolio(id);
     return {
       success: true,
       data: portafolio
@@ -50,7 +50,7 @@ export class AbmController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async eliminarPortafolio(@Param('id') id: string) {
-    await this.abmService.eliminarPortafolio(id);
+    await this.portfolioService.eliminarPortafolio(id);
   }
 
 }

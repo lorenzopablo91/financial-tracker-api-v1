@@ -1,11 +1,11 @@
 import { Controller, Get, Param } from '@nestjs/common';
-import { ValuacionService } from 'src/investment/services/portfolio/valuacion.service';
+import { ValuationService } from 'src/investment/services/portfolio/valuation.service';
 
 @Controller('api/portfolio')
-export class ValuacionController {
+export class ValuationController {
 
     constructor(
-        private readonly valuacionService: ValuacionService
+        private readonly valuationService: ValuationService
     ) { }
 
     // ===== VALORIZACIÓN COMPLETA =====
@@ -13,7 +13,7 @@ export class ValuacionController {
     // Calcular valor actual del portafolio
     @Get(':id/valorizar')
     async calcularValorPortafolio(@Param('id') id: string) {
-        const valoracion = await this.valuacionService.calcularValorPortafolio(id);
+        const valoracion = await this.valuationService.calcularValorPortafolio(id);
         return {
             success: true,
             data: valoracion

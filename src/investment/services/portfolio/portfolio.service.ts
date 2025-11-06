@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 
 @Injectable()
-export class AbmService {
+export class PortfolioService {
 
   constructor(
     private readonly prisma: PrismaService
@@ -64,12 +64,6 @@ export class AbmService {
   async eliminarPortafolio(id: string) {
     return this.prisma.portafolio.delete({
       where: { id }
-    });
-  }
-
-  async eliminarActivo(activoId: string) {
-    return this.prisma.activo.delete({
-      where: { id: activoId }
     });
   }
 

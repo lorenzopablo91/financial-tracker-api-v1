@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { AbmService } from './abm.service';
+import { PortfolioService } from './portfolio.service';
 
 @Injectable()
 export class CapitalService {
   constructor(
-    private readonly abmService: AbmService,
+    private readonly portfolioService: PortfolioService,
     private readonly prisma: PrismaService,
   ) { }
 
@@ -16,7 +16,7 @@ export class CapitalService {
     notas?: string;
     fecha?: Date;
   }) {
-    await this.abmService.obtenerPortafolio(portafolioId);
+    await this.portfolioService.obtenerPortafolio(portafolioId);
 
     // Crear registro de operación
     const operacion = await this.prisma.operacion.create({
@@ -50,7 +50,7 @@ export class CapitalService {
     notas?: string;
     fecha?: Date;
   }) {
-    const portafolio = await this.abmService.obtenerPortafolio(portafolioId);
+    const portafolio = await this.portfolioService.obtenerPortafolio(portafolioId);
 
     const capitalActual = Number(portafolio.capitalInicial);
 

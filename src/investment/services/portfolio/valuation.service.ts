@@ -6,8 +6,8 @@ import { IOL_ENDPOINTS } from 'src/iol-api/core/constants/iol-endpoints';
 import { IolBaseService } from 'src/iol-api/core/services/iol-base/iol-base.service';
 
 @Injectable()
-export class ValuacionService {
-    private readonly logger = new Logger(ValuacionService.name);
+export class ValuationService {
+    private readonly logger = new Logger(ValuationService.name);
 
     constructor(
         private readonly prisma: PrismaService,
