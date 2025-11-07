@@ -51,22 +51,21 @@ export class HistoryService {
     }
 
     async obtenerHistoricoSnapshots(portafolioId: string, limit = 30) {
-        return this.prisma.portafolioSnapshot.findMany({
+        const snapshots = await this.prisma.portafolioSnapshot.findMany({
             where: { portafolioId },
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: 'asc' },
             take: limit,
             select: {
-                id: true,
-                capitalInicial: true,
-                gananciasRealizadas: true,
                 valorActual: true,
-                gananciasNoRealizadas: true,
-                totalInvertido: true,
-                gananciaTotal: true,
-                gananciaTotalPorc: true,
+                gananciasRealizadas: true,
                 createdAt: true
             }
         });
+
+        return snapshots.map(snapshot => ({
+            totalWallet: Number(snapshot.valorActual) + Number(snapshot.gananciasRealizadas),
+            date: snapshot.createdAt
+        }));
     }
 
     // TODO: Para implementar este servicio hay que pagar el plan Started de Render
