@@ -24,7 +24,7 @@ import { HistoryService } from './services/portfolio/history.service';
     DolarApiModule,
     IolApiModule,
     BinanceApiModule,
-    ScheduleModule.forRoot(),
+    // ScheduleModule.forRoot(), TODO: Se usa para el cron cuando lo implementemos
   ],
   controllers: [
     HealthController,

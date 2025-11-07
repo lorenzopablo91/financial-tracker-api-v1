@@ -69,43 +69,44 @@ export class HistoryService {
         });
     }
 
+    // TODO: Para implementar este servicio hay que pagar el plan Started de Render
     // Se ejecuta todos los días a las 00:00
-    @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-    async crearSnapshotsDiarios() {
-        this.logger.log('Iniciando creación de snapshots diarios...');
+    // @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+    // async crearSnapshotsDiarios() {
+    //     this.logger.log('Iniciando creación de snapshots diarios...');
 
-        try {
-            // Obtener todos los portafolios activos
-            const portafolios = await this.prisma.portafolio.findMany({
-                select: { id: true, nombre: true }
-            });
+    //     try {
+    //         // Obtener todos los portafolios activos
+    //         const portafolios = await this.prisma.portafolio.findMany({
+    //             select: { id: true, nombre: true }
+    //         });
 
-            this.logger.log(`Encontrados ${portafolios.length} portafolios`);
+    //         this.logger.log(`Encontrados ${portafolios.length} portafolios`);
 
-            let exitosos = 0;
-            let fallidos = 0;
+    //         let exitosos = 0;
+    //         let fallidos = 0;
 
-            // Crear snapshot para cada portafolio
-            for (const portafolio of portafolios) {
-                try {
-                    await this.crearSnapshot(portafolio.id);
-                    exitosos++;
-                    this.logger.log(`Snapshot creado para portafolio: ${portafolio.nombre}`);
-                } catch (error) {
-                    fallidos++;
-                    this.logger.error(
-                        `Error al crear snapshot para ${portafolio.nombre}:`,
-                        error.message
-                    );
-                }
-            }
+    //         // Crear snapshot para cada portafolio
+    //         for (const portafolio of portafolios) {
+    //             try {
+    //                 await this.crearSnapshot(portafolio.id);
+    //                 exitosos++;
+    //                 this.logger.log(`Snapshot creado para portafolio: ${portafolio.nombre}`);
+    //             } catch (error) {
+    //                 fallidos++;
+    //                 this.logger.error(
+    //                     `Error al crear snapshot para ${portafolio.nombre}:`,
+    //                     error.message
+    //                 );
+    //             }
+    //         }
 
-            this.logger.log(
-                `Snapshots completados: ${exitosos} exitosos, ${fallidos} fallidos`
-            );
-        } catch (error) {
-            this.logger.error('Error en la tarea de snapshots diarios:', error);
-        }
-    }
+    //         this.logger.log(
+    //             `Snapshots completados: ${exitosos} exitosos, ${fallidos} fallidos`
+    //         );
+    //     } catch (error) {
+    //         this.logger.error('Error en la tarea de snapshots diarios:', error);
+    //     }
+    // }
 
 }
