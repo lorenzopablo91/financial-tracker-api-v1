@@ -56,14 +56,13 @@ export class HistoryService {
             orderBy: { createdAt: 'asc' },
             take: limit,
             select: {
-                valorActual: true,
-                gananciasRealizadas: true,
+                totalInvertido: true,
                 createdAt: true
             }
         });
 
         return snapshots.map(snapshot => ({
-            totalWallet: Number(snapshot.valorActual) + Number(snapshot.gananciasRealizadas),
+            totalWallet: Number(snapshot.totalInvertido),
             date: snapshot.createdAt
         }));
     }

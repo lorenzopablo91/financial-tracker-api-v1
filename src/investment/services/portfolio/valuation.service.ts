@@ -289,8 +289,8 @@ export class ValuationService {
             0
         );
         const gananciasNoRealizadas = valorActualActivos - costoBaseActivos;
-        const totalInvertido = capitalInicial + gananciasRealizadas;
         const gananciaTotal = gananciasRealizadas + gananciasNoRealizadas;
+        const totalInvertido = capitalInicial + gananciaTotal;
         const gananciaTotalPorc = capitalInicial > 0
             ? (gananciaTotal / capitalInicial) * 100
             : 0;
