@@ -5,6 +5,7 @@ import { DolarApiModule } from './dolar-api/dolar-api.module';
 import { IolApiModule } from './iol-api/iol-api.module';
 import { BinanceApiModule } from './binance-api/binance-api.module';
 import { PrismaModule } from 'prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -15,7 +16,8 @@ import { PrismaModule } from 'prisma/prisma.module';
     DolarApiModule,
     IolApiModule,
     BinanceApiModule,
-    PrismaModule
+    PrismaModule,
+    AuthModule
   ],
 })
 export class AppModule {}

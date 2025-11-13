@@ -1,9 +1,12 @@
-import { Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { HistoryService } from 'src/investment/services/portfolio/history.service';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles, Role } from 'src/auth/decorators/roles.decorator';
 
 @Controller('api/portfolio')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class HistoryController {
-
     constructor(
         private readonly historyService: HistoryService
     ) { }
@@ -11,6 +14,7 @@ export class HistoryController {
     // ===== HISTÓRICO =====
 
     @Get(':id/operaciones')
+    @Roles(Role.ADMIN, Role.VIEWER)
     async obtenerHistorialOperaciones(
         @Param('id') portafolioId: string,
         @Query('limit') limit?: string
@@ -26,17 +30,8 @@ export class HistoryController {
         };
     }
 
-    @Post(':id/snapshot')
-    async crearSnapshot(@Param('id') id: string) {
-        const snapshot = await this.historyService.crearSnapshot(id);
-        return {
-            success: true,
-            message: 'Snapshot creado exitosamente',
-            data: snapshot
-        };
-    }
-
     @Get(':id/snapshots')
+    @Roles(Role.ADMIN, Role.VIEWER)
     async obtenerSnapshots(
         @Param('id') portafolioId: string,
         @Query('limit') limit?: string
@@ -52,4 +47,16 @@ export class HistoryController {
         };
     }
 
+    @Post(':id/snapshot')
+    @Roles(Role.ADMIN)
+    async crearSnapshot(
+        @Param('id') id: string
+    ) {
+        const snapshot = await this.historyService.crearSnapshot(id);
+        return {
+            success: true,
+            message: 'Snapshot creado exitosamente',
+            data: snapshot
+        };
+    }
 }

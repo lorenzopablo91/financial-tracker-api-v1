@@ -1,7 +1,11 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, UseGuards } from '@nestjs/common';
+import { Role, Roles } from 'src/auth/decorators/roles.decorator';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { PortfolioService } from 'src/investment/services/portfolio/portfolio.service';
 
 @Controller('api/portfolio')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class PortfolioController {
 
   constructor(
@@ -12,6 +16,7 @@ export class PortfolioController {
 
   // Crear un portafolio
   @Post()
+  @Roles(Role.ADMIN)
   async crearPortafolio(@Body() body: {
     nombre: string;
     descripcion?: string;
@@ -27,6 +32,7 @@ export class PortfolioController {
 
   // Obtener todos los portafolios
   @Get()
+  @Roles(Role.ADMIN, Role.VIEWER)
   async obtenerPortafolios() {
     const portafolios = await this.portfolioService.obtenerPortafolios();
     return {
@@ -38,6 +44,7 @@ export class PortfolioController {
 
   // Obtener un portafolio por ID
   @Get(':id')
+  @Roles(Role.ADMIN, Role.VIEWER)
   async obtenerPortafolio(@Param('id') id: string) {
     const portafolio = await this.portfolioService.obtenerPortafolio(id);
     return {
@@ -48,6 +55,7 @@ export class PortfolioController {
 
   // Eliminar un portafolio por ID
   @Delete(':id')
+  @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   async eliminarPortafolio(@Param('id') id: string) {
     await this.portfolioService.eliminarPortafolio(id);
