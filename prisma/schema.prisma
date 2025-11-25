@@ -91,6 +91,7 @@ enum TipoActivo {
   Criptomoneda
   Cedear
   Accion
+  FCI
 }
 
 enum TipoOperacion {

@@ -36,14 +36,14 @@ export class ValuationService {
         }
 
         // 3. Obtener precios de mercado
-        const { preciosCrypto, preciosCedears, cotizacionCCL } =
+        const { preciosCrypto, preciosIOL, cotizacionCCL } =
             await this.obtenerPreciosMercado(portafolio.activos);
 
         // 4. Valorizar activos
         const activosValorizados = this.valorizarActivos(
             portafolio.activos,
             preciosCrypto,
-            preciosCedears,
+            preciosIOL,
             cotizacionCCL
         );
 
@@ -107,7 +107,7 @@ export class ValuationService {
         }
     }
 
-    private async obtenerPreciosCedearsYAcciones(prefijos: string[]): Promise<Record<string, number>> {
+    private async obtenerPreciosIOL(prefijos: string[]): Promise<Record<string, number>> {
         if (prefijos.length === 0) return {};
 
         try {
@@ -124,25 +124,27 @@ export class ValuationService {
 
             portfolioIOL.activos.forEach(activo => {
                 const simbolo = activo?.titulo?.simbolo;
-                const ultimoPrecio = activo?.ultimoPrecio;
+                let precio = activo?.ultimoPrecio;
 
-                if (simbolo && ultimoPrecio && ultimoPrecio > 0) {
-                    precios[simbolo.toUpperCase()] = Number(ultimoPrecio);
+                if (simbolo && precio && precio > 0) {
+                    precios[simbolo.toUpperCase()] = Number(precio);
+                    this.logger.debug(`${simbolo}: $${precio} ARS`);
                 }
             });
 
             // Filtrar solo los activos que necesitamos
             const resultado: Record<string, number> = {};
             prefijos.forEach(prefijo => {
-                if (precios[prefijo]) {
-                    resultado[prefijo] = precios[prefijo];
+                const prefijoUpper = prefijo.toUpperCase();
+                if (precios[prefijoUpper]) {
+                    resultado[prefijo] = precios[prefijoUpper];
                 } else {
-                    this.logger.warn(`No se encontró precio para ${prefijo} en IOL`);
+                    this.logger.warn(`❌ No se encontró precio para ${prefijo} en IOL`);
                 }
             });
 
             this.logger.log(
-                `Precios IOL obtenidos (${Object.keys(resultado).length}/${prefijos.length}): ` +
+                `✅ Precios IOL obtenidos (${Object.keys(resultado).length}/${prefijos.length}): ` +
                 Object.keys(resultado).join(', ')
             );
 
@@ -169,17 +171,19 @@ export class ValuationService {
         const cryptos = activos.filter(a => a.tipo === 'Criptomoneda');
         const cedears = activos.filter(a => a.tipo === 'Cedear');
         const acciones = activos.filter(a => a.tipo === 'Accion');
+        const fcis = activos.filter(a => a.tipo === 'FCI');
 
-        const [preciosCrypto, preciosCedears, cotizacionCCL] = await Promise.all([
+        const [preciosCrypto, preciosIOL, cotizacionCCL] = await Promise.all([
             this.obtenerPreciosCrypto(cryptos.map(c => c.prefijo)),
-            this.obtenerPreciosCedearsYAcciones([
+            this.obtenerPreciosIOL([
                 ...cedears.map(c => c.prefijo),
-                ...acciones.map(a => a.prefijo)
+                ...acciones.map(a => a.prefijo),
+                ...fcis.map(f => f.prefijo)
             ]),
             this.obtenerCotizacionCCL()
         ]);
 
-        return { preciosCrypto, preciosCedears, cotizacionCCL };
+        return { preciosCrypto, preciosIOL, cotizacionCCL };
     }
 
     private construirRespuestaSinActivos(
@@ -215,14 +219,14 @@ export class ValuationService {
     private valorizarActivos(
         activos: any[],
         preciosCrypto: Record<string, number>,
-        preciosCedears: Record<string, number>,
+        preciosIOL: Record<string, number>,
         cotizacionCCL: number
     ): ActivoValorizado[] {
         return activos.map(activo => {
             const precioMercado = this.obtenerPrecioMercado(
                 activo,
                 preciosCrypto,
-                preciosCedears,
+                preciosIOL,
                 cotizacionCCL
             );
 
@@ -234,6 +238,10 @@ export class ValuationService {
             const gananciaPorc = costoBase > 0
                 ? (gananciaPerdida / costoBase) * 100
                 : 0;
+
+            // Obtener color del tipo de activo
+            const config = TIPO_CONFIG[activo.tipo as keyof typeof TIPO_CONFIG];
+            const color = config?.color || '#6B7280'; // Color por defecto si no existe
 
             return {
                 id: activo.id,
@@ -252,7 +260,8 @@ export class ValuationService {
                 costoBase: this.redondear(costoBase),
                 valorActual: this.redondear(valorActual),
                 gananciaPerdida: this.redondear(gananciaPerdida),
-                gananciaPorc: this.redondear(gananciaPorc)
+                gananciaPorc: this.redondear(gananciaPorc),
+                color: color
             };
         });
     }
@@ -260,18 +269,39 @@ export class ValuationService {
     private obtenerPrecioMercado(
         activo: any,
         preciosCrypto: Record<string, number>,
-        preciosCedears: Record<string, number>,
+        preciosIOL: Record<string, number>,
         cotizacionCCL: number
     ): number {
         if (activo.tipo === 'Criptomoneda') {
-            return preciosCrypto[activo.prefijo] || 0;
+            const precio = preciosCrypto[activo.prefijo] || 0;
+            if (precio === 0) {
+                this.logger.warn(`⚠️  Precio crypto no encontrado para ${activo.prefijo}`);
+            }
+            return precio;
+        }
+
+        if (activo.tipo === 'FCI') {
+            const valorCuotaparteUSD = preciosIOL[activo.prefijo] || 0;
+            if (valorCuotaparteUSD === 0) {
+                this.logger.warn(`⚠️  Valor cuotaparte no encontrado para ${activo.prefijo} (FCI)`);
+                return 0;
+            }
+            this.logger.debug(`${activo.prefijo} (FCI): Valor cuotaparte $${valorCuotaparteUSD} USD`);
+            return valorCuotaparteUSD;
         }
 
         if (activo.tipo === 'Cedear' || activo.tipo === 'Accion') {
-            const precioARS = preciosCedears[activo.prefijo] || 0;
-            return precioARS / cotizacionCCL;
+            const precioARS = preciosIOL[activo.prefijo] || 0;
+            if (precioARS === 0) {
+                this.logger.warn(`⚠️  Precio IOL no encontrado para ${activo.prefijo} (${activo.tipo})`);
+                return 0;
+            }
+            const precioUSD = precioARS / cotizacionCCL;
+            this.logger.debug(`${activo.prefijo}: $${precioARS} ARS = $${precioUSD.toFixed(2)} USD (CCL: $${cotizacionCCL})`);
+            return precioUSD;
         }
 
+        this.logger.warn(`⚠️  Tipo de activo desconocido: ${activo.tipo}`);
         return 0;
     }
 
@@ -290,7 +320,7 @@ export class ValuationService {
         );
         const gananciasNoRealizadas = valorActualActivos - costoBaseActivos;
         const gananciaTotal = gananciasRealizadas + gananciasNoRealizadas;
-        const totalInvertido = capitalInicial + gananciaTotal;
+        const totalInvertido = valorActualActivos + gananciasRealizadas;
         const gananciaTotalPorc = capitalInicial > 0
             ? (gananciaTotal / capitalInicial) * 100
             : 0;
@@ -327,7 +357,7 @@ export class ValuationService {
         ];
 
         // Agregar resumen por cada tipo
-        (['Criptomoneda', 'Cedear', 'Accion'] as const).forEach(tipo => {
+        (['Criptomoneda', 'Cedear', 'Accion', 'FCI'] as const).forEach(tipo => {
             const resumen = this.calcularResumenPorTipo(
                 tipo,
                 activosValorizados,

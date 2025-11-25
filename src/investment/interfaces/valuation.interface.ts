@@ -2,7 +2,7 @@ export interface ActivoValorizado {
     id: string;
     nombre: string;
     prefijo: string;
-    tipo: string;
+    tipo: 'Criptomoneda' | 'Cedear' | 'Accion' | 'FCI';
     cantidad: number;
     costoPromedioUSD: number;
     costoPromedioARS: number | null;
@@ -12,6 +12,7 @@ export interface ActivoValorizado {
     valorActual: number;
     gananciaPerdida: number;
     gananciaPorc: number;
+    color: string;
 }
 
 export interface ResumenCategoria {
@@ -44,5 +45,11 @@ export const TIPO_CONFIG = {
         color: '#9966FF',
         icon: 'bar_chart',
         type: 'stocks'
+    },
+    FCI: {
+        name: 'FCI',
+        color: '#10B981',
+        icon: 'show_chart',
+        type: 'fund'
     }
 } as const;
