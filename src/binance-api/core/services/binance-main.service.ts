@@ -40,24 +40,12 @@ export class BinanceMainService {
         return this.marketService.getExchangeInfo();
     }
 
-    getTicker24hr(symbol?: string): Observable<any> {
-        return this.priceService.getTicker24hr(symbol);
-    }
-
     getFiatOrders(beginDate: string): Observable<BinanceSpotOrders[]> {
         return this.orderService.getFiatOrders(beginDate);
     }
 
     getFiatOrdersAverages(beginDate: string): Observable<Record<string, number>> {
         return this.orderService.getFiatOrdersAverages(beginDate);
-    }
-
-    getFiatOrdersAveragesUSD(beginDate: string): Observable<Record<string, number>> {
-        return this.orderService.getFiatOrdersAveragesUSD(beginDate);
-    }
-
-    getHistoricalPriceUSD(symbol: string, timestamp: number): Observable<number> {
-        return this.priceService.getHistoricalPriceUSD(symbol, timestamp);
     }
 
     // ========== CIRCUIT BREAKER METHODS ==========

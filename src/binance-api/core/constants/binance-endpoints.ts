@@ -12,7 +12,7 @@ export const BINANCE_ENDPOINTS = {
     FIAT_ORDERS: '/sapi/v1/fiat/payments',
 
     // External URLs
-    BACKUP_PRICE_URL: `https://api.coingecko.com/api/v3/simple/price`
+    COINGECKO_SIMPLE_PRICE: `https://api.coingecko.com/api/v3/simple/price`
 
 } as const;
 
