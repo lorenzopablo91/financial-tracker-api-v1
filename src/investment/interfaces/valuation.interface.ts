@@ -48,7 +48,7 @@ export const TIPO_CONFIG = {
     },
     FCI: {
         name: 'FCI',
-        color: '#10B981',
+        color: '#36A2EB',
         icon: 'show_chart',
         type: 'fund'
     }

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { Observable, from } from 'rxjs';
 import { BinanceAccountService } from './binance-account.service';
 import { BinancePriceService } from './binance-price.service';
 import { BinanceCryptoService } from './binance-crypto.service';
@@ -28,7 +28,7 @@ export class BinanceMainService {
     }
 
     getCryptoPrices(symbols: string[]): Observable<Record<string, number>> {
-        return this.priceService.getCryptoPrices(symbols);
+        return from(this.priceService.getCryptoPrices(symbols));
     }
 
     getCryptoData(): Observable<CryptoData[]> {

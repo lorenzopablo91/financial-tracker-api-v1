@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Observable, forkJoin, of, map, catchError, throwError } from 'rxjs';
+import { Observable, of, map, catchError, throwError, timeout, lastValueFrom } from 'rxjs';
 import { BINANCE_ENDPOINTS } from '../constants/binance-endpoints';
 import { BinancePriceData } from '../interfaces/binance-response.interface';
 import { BinanceHttpService } from './binance-http.service';
@@ -10,38 +10,42 @@ export class BinancePriceService {
 
     constructor(private readonly httpService: BinanceHttpService) { }
 
-    private fetchSingleCryptoPrice(symbol: string): Observable<{ symbol: string; price: number } | null> {
-        if (symbol === 'USDT') return of({ symbol: 'USDT', price: 1 });
+    async getCryptoPrices(symbols: string[]): Promise<Record<string, number>> {
+        try {
+            const allPrices = await lastValueFrom(
+                this.httpService
+                    .makePublicRequest<any[]>(BINANCE_ENDPOINTS.TICKER_PRICE)
+                    .pipe(
+                        timeout(10000),
+                        map(response => response),
+                        catchError(error => {
+                            this.logger.error('Error fetching all Binance prices:', error.message);
+                            return of([]);
+                        })
+                    )
+            );
 
-        const usdtSymbol = `${symbol}USDT`;
-        return this.httpService.makePublicRequest<BinancePriceData>(
-            BINANCE_ENDPOINTS.TICKER_PRICE,
-            { symbol: usdtSymbol }
-        ).pipe(
-            map((response) => ({ symbol, price: parseFloat(response.price) })),
-            catchError((error) => {
-                this.logger.warn(`Failed to fetch price for ${symbol}:`, error.message);
-                return of(null);
-            }),
-        );
-    }
+            // Filtrar solo los símbolos que necesitas
+            const result: Record<string, number> = {};
 
-    getCryptoPrices(symbols: string[]): Observable<Record<string, number>> {
-        const validSymbols = symbols.filter((s) => s?.trim());
-        if (validSymbols.length === 0) return of({});
+            symbols.forEach(symbol => {
+                const symbolWithUSDT = `${symbol}USDT`;
+                const priceData = allPrices.find(p => p.symbol === symbolWithUSDT);
 
-        const priceObservables = validSymbols.map((s) => this.fetchSingleCryptoPrice(s.toUpperCase()));
-        return forkJoin(priceObservables).pipe(
-            map((results) => {
-                const priceMap: Record<string, number> = {};
-                results.forEach((r) => r && (priceMap[r.symbol] = r.price));
-
-                if (Object.keys(priceMap).length === 0) {
-                    throw new Error('No cryptocurrency prices could be fetched');
+                if (priceData && priceData.price) {
+                    result[symbol] = parseFloat(priceData.price);
+                } else {
+                    this.logger.warn(`Price not found for ${symbol}`);
                 }
-                return priceMap;
-            }),
-        );
+            });
+
+            this.logger.log(`✅ Prices obtained: ${Object.keys(result).length}/${symbols.length}`);
+            return result;
+
+        } catch (error) {
+            this.logger.error('Critical error in getCryptoPrices:', error);
+            throw new Error('No cryptocurrency prices could be fetched');
+        }
     }
 
     getHistoricalPriceUSD(symbol: string, timestamp: number): Observable<number> {
