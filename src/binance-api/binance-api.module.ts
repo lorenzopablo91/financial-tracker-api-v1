@@ -10,6 +10,7 @@ import { BinanceCryptoService } from './core/services/binance-crypto.service';
 import { BinanceMarketService } from './core/services/binance-market.service';
 import { BinanceOrderService } from './core/services/binance-order.service';
 import { BinanceMainService } from './core/services/binance-main.service';
+import { BinanceCircuitBreakerService } from './core/services/binance-circuit-breaker.service';
 
 @Module({
   imports: [
@@ -30,8 +31,8 @@ import { BinanceMainService } from './core/services/binance-main.service';
     BinanceOrderService,
     BinanceCryptoService,
     BinanceMarketService,
-    
     BinanceMainService,
+    BinanceCircuitBreakerService
   ],
   exports: [
     BinanceMainService

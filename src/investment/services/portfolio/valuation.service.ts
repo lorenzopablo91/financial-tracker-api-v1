@@ -93,6 +93,7 @@ export class ValuationService {
         if (symbols.length === 0) return {};
 
         try {
+            // El servicio de Binance ahora maneja el circuit breaker y fallback internamente
             const prices = await this.binanceService.getCryptoPrices(symbols).toPromise();
 
             const result: Record<string, number> = {};
@@ -100,6 +101,15 @@ export class ValuationService {
                 const symbol = key.replace('USDT', '');
                 result[symbol] = value;
             }
+
+            // Log para saber qué fuente se usó
+            const circuitState = await this.binanceService.getCircuitBreakerState();
+            if (circuitState.isBlocked) {
+                this.logger.log(`📊 Usando CoinGecko (Binance bloqueado: ${circuitState.state})`);
+            } else {
+                this.logger.log(`💎 Usando Binance (${Object.keys(result).length} precios)`);
+            }
+
             return result;
         } catch (error) {
             this.logger.error('Error obteniendo precios crypto:', error);

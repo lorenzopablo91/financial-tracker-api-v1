@@ -79,3 +79,14 @@ export interface BinanceSpotOrders {
   createTime: number;
   updateTime: number;
 }
+
+export interface BanInfo {
+  until: number;
+  reason: string;
+}
+
+export enum CircuitState {
+  CLOSED = 'CLOSED',
+  OPEN = 'OPEN',
+  HALF_OPEN = 'HALF_OPEN'
+}

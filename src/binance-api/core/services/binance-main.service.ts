@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Observable, from } from 'rxjs';
+import { Observable } from 'rxjs';
 import { BinanceAccountService } from './binance-account.service';
 import { BinancePriceService } from './binance-price.service';
 import { BinanceCryptoService } from './binance-crypto.service';
@@ -22,13 +22,14 @@ export class BinanceMainService {
         return BinanceBaseHelper.formatResponse(data, additionalInfo);
     }
 
-    // Delegación a servicios específicos
+    // ========== DELEGACIÓN A SERVICIOS ESPECÍFICOS ==========
+
     getAccountBalances(): Observable<Record<string, number>> {
         return this.accountService.getAccountBalances();
     }
 
     getCryptoPrices(symbols: string[]): Observable<Record<string, number>> {
-        return from(this.priceService.getCryptoPrices(symbols));
+        return this.priceService.getCryptoPrices(symbols);
     }
 
     getCryptoData(): Observable<CryptoData[]> {
@@ -57,5 +58,21 @@ export class BinanceMainService {
 
     getHistoricalPriceUSD(symbol: string, timestamp: number): Observable<number> {
         return this.priceService.getHistoricalPriceUSD(symbol, timestamp);
+    }
+
+    // ========== CIRCUIT BREAKER METHODS ==========
+
+    /**
+     * Obtiene el estado del circuit breaker
+     */
+    getCircuitBreakerState() {
+        return this.priceService.getCircuitBreakerState();
+    }
+
+    /**
+     * Resetea el circuit breaker (solo para admin/debugging)
+     */
+    resetCircuitBreaker() {
+        return this.priceService.resetCircuitBreaker();
     }
 }
