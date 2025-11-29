@@ -145,20 +145,35 @@ export class BinancePriceService {
                 'zilliqa', 'basic-attention-token', 'tether', 'usd-coin'
             ].join(',');
 
+            const url = BINANCE_ENDPOINTS.COINGECKO_SIMPLE_PRICE;
+            const params = {
+                ids: allIds,
+                vs_currencies: 'usd'
+            };
+
+            // 🔍 LOG DETALLADO
+            this.logger.debug(`📡 Llamando a CoinGecko: ${url}`);
+            this.logger.debug(`📋 Params: ${JSON.stringify(params)}`);
+
             const response = await firstValueFrom(
-                this.httpService.get(BINANCE_ENDPOINTS.COINGECKO_SIMPLE_PRICE, {
-                    params: {
-                        ids: allIds,
-                        vs_currencies: 'usd'
-                    }
-                }).pipe(
+                this.httpService.get(url, { params }).pipe(
                     timeout(15000),
-                    map(res => res.data),
+                    map(res => {
+                        // 🔍 LOG DE ÉXITO
+                        this.logger.debug(`✅ CoinGecko response status: ${res.status}`);
+                        this.logger.debug(`📦 Data keys: ${Object.keys(res.data).length}`);
+                        return res.data;
+                    }),
                     catchError(error => {
-                        const status = error?.response?.status;
-                        if (status === 429) {
-                            this.logger.error('🚫 Rate limit en CoinGecko - cache requerido');
-                        }
+                        // 🔍 LOG DETALLADO DEL ERROR
+                        this.logger.error('❌ CoinGecko Error Details:', {
+                            status: error?.response?.status,
+                            statusText: error?.response?.statusText,
+                            message: error?.message,
+                            url: error?.config?.url,
+                            headers: error?.response?.headers,
+                            data: error?.response?.data
+                        });
                         throw error;
                     })
                 )
@@ -176,6 +191,7 @@ export class BinancePriceService {
 
             return result;
         } catch (error) {
+            this.logger.error('💥 Exception in fetchAllPricesFromCoinGecko:', error);
             throw error;
         }
     }
