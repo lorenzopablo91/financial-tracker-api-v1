@@ -1,28 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { timeout, catchError, map } from 'rxjs/operators';
+import { timeout, catchError } from 'rxjs/operators';
 import { of, Observable, from, firstValueFrom } from 'rxjs';
 import { BinanceCircuitBreakerService } from './binance-circuit-breaker.service';
 import { BinanceHttpService } from './binance-http.service';
 import { BINANCE_ENDPOINTS } from '../constants/binance-endpoints';
-import { HttpService } from '@nestjs/axios';
 
 @Injectable()
 export class BinancePriceService {
     private readonly logger = new Logger(BinancePriceService.name);
 
-    // Cache para CoinGecko
-    private coingeckoCache: {
-        data: Record<string, number>;
-        timestamp: number;
-    } | null = null;
-    private readonly COINGECKO_CACHE_TTL = 60000; // 1 minuto
-
     constructor(
         private readonly binanceHttpService: BinanceHttpService,
-        private readonly httpService: HttpService,
         private readonly circuitBreaker: BinanceCircuitBreakerService
     ) { }
 
+    /**
+     * Obtiene precios de criptomonedas desde Binance
+     * Usa circuit breaker para proteger contra rate limits
+     */
     getCryptoPrices(symbols: string[]): Observable<Record<string, number>> {
         if (symbols.length === 0) {
             return of({});
@@ -32,36 +27,48 @@ export class BinancePriceService {
     }
 
     private async getCryptoPricesInternal(symbols: string[]): Promise<Record<string, number>> {
-        // 1. Intentar Binance
-        if (this.circuitBreaker.canMakeRequest()) {
-            try {
-                const prices = await this.fetchFromBinance(symbols);
-
-                if (Object.keys(prices).length > 0) {
-                    this.circuitBreaker.recordSuccess();
-                    this.logger.log(`✅ Binance: ${Object.keys(prices).length}/${symbols.length} precios`);
-                    return prices;
-                }
-
-                this.logger.warn('⚠️ Binance no retornó precios, usando fallback');
-            } catch (error) {
-                this.circuitBreaker.recordFailure(error);
-                const errorMsg = error?.message || error?.response?.data?.msg || 'Unknown error';
-                this.logger.error('❌ Error en Binance, usando fallback:', errorMsg);
-            }
-        } else {
+        // Verificar si podemos hacer la request
+        if (!this.circuitBreaker.canMakeRequest()) {
             const state = this.circuitBreaker.getState();
-            this.logger.warn(
-                `🚫 Binance bloqueado (${state.state}) - usando CoinGecko directamente`
-            );
+
+            if (state.banInfo) {
+                const remainingMs = state.banInfo.until - Date.now();
+                const remainingMin = Math.ceil(remainingMs / 60000);
+                this.logger.warn(
+                    `🚫 Binance bloqueado por ban. Se desbloqueará en ~${remainingMin} minutos`
+                );
+            } else {
+                this.logger.warn(`🚫 Circuit breaker abierto (${state.state})`);
+            }
+
+            return {}; // Retornar vacío cuando está bloqueado
         }
 
-        // 2. Fallback a CoinGecko con cache
-        return await this.fetchFromCoinGeckoWithCache(symbols);
+        // Intentar obtener precios de Binance
+        try {
+            const prices = await this.fetchFromBinance(symbols);
+
+            if (Object.keys(prices).length > 0) {
+                this.circuitBreaker.recordSuccess();
+                this.logger.log(`✅ Binance: ${Object.keys(prices).length}/${symbols.length} precios`);
+                return prices;
+            }
+
+            this.logger.warn('⚠️ Binance no retornó precios');
+            return {};
+        } catch (error) {
+            // Registrar el error en el circuit breaker
+            this.circuitBreaker.recordFailure(error);
+
+            const errorMsg = error?.message || 'Unknown error';
+            this.logger.error('❌ Error obteniendo precios de Binance:', errorMsg);
+
+            return {};
+        }
     }
 
     /**
-     * ✅ Usa BinanceHttpService que tiene baseURL configurado
+     * Obtiene precios desde la API de Binance
      */
     private async fetchFromBinance(symbols: string[]): Promise<Record<string, number>> {
         try {
@@ -86,7 +93,7 @@ export class BinancePriceService {
                     if (priceData && priceData.price) {
                         result[symbol] = parseFloat(priceData.price);
                     } else {
-                        this.logger.debug(`Price not found in Binance for ${symbol}`);
+                        this.logger.debug(`Precio no encontrado para ${symbol}`);
                     }
                 });
             }
@@ -98,164 +105,16 @@ export class BinancePriceService {
     }
 
     /**
-     * CoinGecko con cache - usa HttpService directo porque es externa
+     * Obtiene el estado del circuit breaker
      */
-    private async fetchFromCoinGeckoWithCache(symbols: string[]): Promise<Record<string, number>> {
-        const now = Date.now();
-
-        // Verificar cache
-        if (this.coingeckoCache && (now - this.coingeckoCache.timestamp) < this.COINGECKO_CACHE_TTL) {
-            this.logger.log('⚡ Usando cache de CoinGecko');
-            return this.filterCachedPrices(this.coingeckoCache.data, symbols);
-        }
-
-        try {
-            const allPrices = await this.fetchAllPricesFromCoinGecko();
-
-            if (Object.keys(allPrices).length > 0) {
-                this.coingeckoCache = {
-                    data: allPrices,
-                    timestamp: now
-                };
-                this.logger.log(`📊 CoinGecko actualizado: ${Object.keys(allPrices).length} precios en cache`);
-                return this.filterCachedPrices(allPrices, symbols);
-            }
-        } catch (error) {
-            const errorMsg = error?.message || 'Unknown error';
-            this.logger.error('Error en CoinGecko:', errorMsg);
-
-            if (this.coingeckoCache) {
-                this.logger.warn('⚠️ Usando cache vencido de CoinGecko');
-                return this.filterCachedPrices(this.coingeckoCache.data, symbols);
-            }
-        }
-
-        this.logger.error('❌ No hay datos disponibles de ninguna fuente');
-        return {};
-    }
-
-    private async fetchAllPricesFromCoinGecko(): Promise<Record<string, number>> {
-        try {
-            const allIds = [
-                'bitcoin', 'ethereum', 'binancecoin', 'solana', 'cardano',
-                'ripple', 'polkadot', 'dogecoin', 'matic-network', 'avalanche-2',
-                'chainlink', 'uniswap', 'cosmos', 'litecoin', 'bitcoin-cash',
-                'near', 'algorand', 'fantom', 'the-sandbox', 'decentraland',
-                'aave', 'curve-dao-token', 'the-graph', 'enjincoin', 'chiliz',
-                'zilliqa', 'basic-attention-token', 'tether', 'usd-coin'
-            ].join(',');
-
-            const url = BINANCE_ENDPOINTS.COINGECKO_SIMPLE_PRICE;
-            const params = {
-                ids: allIds,
-                vs_currencies: 'usd'
-            };
-
-            // 🔍 LOG DETALLADO
-            this.logger.debug(`📡 Llamando a CoinGecko: ${url}`);
-            this.logger.debug(`📋 Params: ${JSON.stringify(params)}`);
-
-            const response = await firstValueFrom(
-                this.httpService.get(url, { params }).pipe(
-                    timeout(15000),
-                    map(res => {
-                        // 🔍 LOG DE ÉXITO
-                        this.logger.debug(`✅ CoinGecko response status: ${res.status}`);
-                        this.logger.debug(`📦 Data keys: ${Object.keys(res.data).length}`);
-                        return res.data;
-                    }),
-                    catchError(error => {
-                        // 🔍 LOG DETALLADO DEL ERROR
-                        this.logger.error('❌ CoinGecko Error Details:', {
-                            status: error?.response?.status,
-                            statusText: error?.response?.statusText,
-                            message: error?.message,
-                            url: error?.config?.url,
-                            headers: error?.response?.headers,
-                            data: error?.response?.data
-                        });
-                        throw error;
-                    })
-                )
-            );
-
-            const idToSymbol = this.getIdToSymbolMap();
-            const result: Record<string, number> = {};
-
-            Object.entries(response).forEach(([id, data]: [string, any]) => {
-                const symbol = idToSymbol[id];
-                if (symbol && data?.usd) {
-                    result[symbol] = data.usd;
-                }
-            });
-
-            return result;
-        } catch (error) {
-            this.logger.error('💥 Exception in fetchAllPricesFromCoinGecko:', error);
-            throw error;
-        }
-    }
-
-    private filterCachedPrices(allPrices: Record<string, number>, symbols: string[]): Record<string, number> {
-        const result: Record<string, number> = {};
-
-        symbols.forEach(symbol => {
-            const symbolUpper = symbol.toUpperCase();
-            if (allPrices[symbolUpper]) {
-                result[symbol] = allPrices[symbolUpper];
-            } else if (allPrices[symbol]) {
-                result[symbol] = allPrices[symbol];
-            }
-        });
-
-        this.logger.log(`💎 Retornando ${Object.keys(result).length}/${symbols.length} precios del cache`);
-        return result;
-    }
-
-    private getIdToSymbolMap(): Record<string, string> {
-        return {
-            'bitcoin': 'BTC',
-            'ethereum': 'ETH',
-            'binancecoin': 'BNB',
-            'solana': 'SOL',
-            'cardano': 'ADA',
-            'ripple': 'XRP',
-            'polkadot': 'DOT',
-            'dogecoin': 'DOGE',
-            'matic-network': 'MATIC',
-            'avalanche-2': 'AVAX',
-            'chainlink': 'LINK',
-            'uniswap': 'UNI',
-            'cosmos': 'ATOM',
-            'litecoin': 'LTC',
-            'bitcoin-cash': 'BCH',
-            'near': 'NEAR',
-            'algorand': 'ALGO',
-            'fantom': 'FTM',
-            'the-sandbox': 'SAND',
-            'decentraland': 'MANA',
-            'aave': 'AAVE',
-            'curve-dao-token': 'CRV',
-            'the-graph': 'GRT',
-            'enjincoin': 'ENJ',
-            'chiliz': 'CHZ',
-            'zilliqa': 'ZIL',
-            'basic-attention-token': 'BAT',
-            'tether': 'USDT',
-            'usd-coin': 'USDC'
-        };
-    }
-
     getCircuitBreakerState() {
         return this.circuitBreaker.getState();
     }
 
+    /**
+     * Resetea el circuit breaker (solo admin/debugging)
+     */
     resetCircuitBreaker() {
         this.circuitBreaker.reset();
-    }
-
-    clearCache() {
-        this.coingeckoCache = null;
-        this.logger.log('🗑️ Cache de CoinGecko limpiado');
     }
 }
