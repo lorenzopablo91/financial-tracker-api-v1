@@ -47,20 +47,4 @@ export class BinanceMainService {
     getFiatOrdersAverages(beginDate: string): Observable<Record<string, number>> {
         return this.orderService.getFiatOrdersAverages(beginDate);
     }
-
-    // ========== CIRCUIT BREAKER METHODS ==========
-
-    /**
-     * Obtiene el estado del circuit breaker
-     */
-    getCircuitBreakerState() {
-        return this.priceService.getCircuitBreakerState();
-    }
-
-    /**
-     * Resetea el circuit breaker (solo para admin/debugging)
-     */
-    resetCircuitBreaker() {
-        return this.priceService.resetCircuitBreaker();
-    }
 }

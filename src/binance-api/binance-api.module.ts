@@ -10,7 +10,7 @@ import { BinanceCryptoService } from './core/services/binance-crypto.service';
 import { BinanceMarketService } from './core/services/binance-market.service';
 import { BinanceOrderService } from './core/services/binance-order.service';
 import { BinanceMainService } from './core/services/binance-main.service';
-import { BinanceCircuitBreakerService } from './core/services/binance-circuit-breaker.service';
+import { BinanceWebsocketService } from './core/services/binance-websocket.service';
 
 @Module({
   imports: [
@@ -22,17 +22,15 @@ import { BinanceCircuitBreakerService } from './core/services/binance-circuit-br
   ],
   providers: [
     BinanceAuthService,
-
+    BinanceWebsocketService,
     BinanceHttpService,
     BinanceTimeService,
-    
     BinanceAccountService,
     BinancePriceService,
     BinanceOrderService,
     BinanceCryptoService,
     BinanceMarketService,
-    BinanceMainService,
-    BinanceCircuitBreakerService
+    BinanceMainService
   ],
   exports: [
     BinanceMainService

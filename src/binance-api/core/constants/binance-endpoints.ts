@@ -10,10 +10,6 @@ export const BINANCE_ENDPOINTS = {
 
     // Savings endpoints (require signature)
     FIAT_ORDERS: '/sapi/v1/fiat/payments',
-
-    // External URLs
-    COINGECKO_SIMPLE_PRICE: `https://api.coingecko.com/api/v3/simple/price`
-
 } as const;
 
 export const CRYPTO_METADATA = {
