@@ -93,17 +93,19 @@ export class ValuationService {
         if (symbols.length === 0) return {};
 
         try {
+            this.logger.log(`📡 Obteniendo precios crypto: ${symbols.join(', ')}`);
             const prices = await this.binanceService.getCryptoPrices(symbols).toPromise();
+
+            this.logger.log(`✅ Precios recibidos: ${Object.keys(prices || {}).length}/${symbols.length}`);
 
             const result: Record<string, number> = {};
             for (const [key, value] of Object.entries(prices || {})) {
-                const symbol = key.replace('USDT', '');
-                result[symbol] = value;
+                result[key] = value;
             }
 
             return result;
-        } catch (error) {
-            this.logger.error('Error obteniendo precios crypto:', error);
+        } catch (error: any) {
+            this.logger.error('Error obteniendo precios crypto:', error.message);
             return {};
         }
     }

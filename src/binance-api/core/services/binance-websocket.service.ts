@@ -44,10 +44,13 @@ export class BinanceWebsocketService implements OnModuleDestroy {
             }
 
             // Inicializar conexión
-            this.initWebSocket(newSymbols.length > 0 ? newSymbols : symbols, (prices) => {
-                observer.next(prices);
-                observer.complete();
-            });
+            this.initWebSocket(
+                newSymbols.length > 0 ? newSymbols : symbols,
+                (): void => {
+                    observer.next(prices);
+                    observer.complete();
+                }
+            );
 
             // Suscribirse a actualizaciones de precios
             const subscription = this.priceUpdates$.subscribe(update => {
@@ -69,24 +72,63 @@ export class BinanceWebsocketService implements OnModuleDestroy {
     }
 
     /**
-     * Obtener precios actuales (promise-based)
-     */
+ * Obtener precios actuales (promise-based)
+ */
     async getPricesOnce(symbols: string[]): Promise<Record<string, number>> {
         return new Promise((resolve, reject) => {
+            const prices: Record<string, number> = {};
+            let receivedCount = 0;
             const timeout = setTimeout(() => {
-                reject(new Error('Timeout esperando precios'));
-            }, 10000);
+                reject(new Error(`Timeout esperando precios de: ${symbols.join(', ')}`));
+            }, 15000);
 
-            this.subscribeToSymbols(symbols).subscribe({
-                next: (prices) => {
-                    clearTimeout(timeout);
-                    resolve(prices);
-                },
-                error: (err) => {
-                    clearTimeout(timeout);
-                    reject(err);
+            // Asegurarse de que el WebSocket esté conectado
+            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                this.initWebSocket(symbols, () => {
+                    // Callback cuando WebSocket está listo
+                    this.waitForPrices(symbols, prices, receivedCount, timeout, resolve, reject);
+                });
+            } else {
+                // Si ya está conectado, agregar nuevos símbolos si es necesario
+                const newSymbols = symbols.filter(s => !this.connectedSymbols.has(s));
+                if (newSymbols.length > 0) {
+                    const allSymbols = Array.from(this.connectedSymbols).concat(newSymbols);
+                    this.ws.close();
+                    this.ws = null;
+                    this.initWebSocket(allSymbols, () => {
+                        this.waitForPrices(symbols, prices, receivedCount, timeout, resolve, reject);
+                    });
+                } else {
+                    // Ya están todos los símbolos, solo esperar a que se actualicen
+                    this.waitForPrices(symbols, prices, receivedCount, timeout, resolve, reject);
                 }
-            });
+            }
+        });
+    }
+
+    private waitForPrices(
+        symbols: string[],
+        prices: Record<string, number>,
+        receivedCount: number,
+        timeout: NodeJS.Timeout,
+        resolve: Function,
+        reject: Function
+    ) {
+        const subscription = this.priceUpdates$.subscribe(update => {
+            if (symbols.includes(update.symbol)) {
+                prices[update.symbol] = update.price;
+                receivedCount++;
+
+                this.logger.debug(
+                    `📈 Precio recibido: ${update.symbol} = $${update.price} (${receivedCount}/${symbols.length})`
+                );
+
+                if (receivedCount === symbols.length) {
+                    clearTimeout(timeout);
+                    subscription.unsubscribe();
+                    resolve(prices);
+                }
+            }
         });
     }
 
@@ -111,16 +153,17 @@ export class BinanceWebsocketService implements OnModuleDestroy {
         });
     }
 
-    private initWebSocket(symbols: string[], onReady?: (prices: Record<string, number>) => void) {
+    private initWebSocket(symbols: string[], onReady?: () => void) {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.logger.log(`✅ WebSocket ya conectado`);
+            if (onReady) onReady();
             return;
         }
 
         const streams = symbols.map(s => `${s.toLowerCase()}usdt@ticker`).join('/');
         const wsUrl = `${this.WS_URL}/${streams}`;
 
-        this.logger.log(`🔌 Conectando WebSocket: ${symbols.length} símbolos`);
+        this.logger.log(`🔌 Conectando WebSocket: ${symbols.length} símbolos (${streams})`);
 
         try {
             this.ws = new WebSocket(wsUrl);
@@ -129,6 +172,7 @@ export class BinanceWebsocketService implements OnModuleDestroy {
                 this.logger.log(`✅ WebSocket conectado`);
                 symbols.forEach(s => this.connectedSymbols.add(s));
                 this.reconnectAttempts = 0;
+                if (onReady) onReady();
             });
 
             this.ws.on('message', (data: string) => {
