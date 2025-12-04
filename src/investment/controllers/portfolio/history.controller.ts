@@ -55,7 +55,7 @@ export class HistoryController {
         const snapshot = await this.historyService.crearSnapshot(id);
         return {
             success: true,
-            message: 'Snapshot creado exitosamente',
+            message: 'Valuación del portafolio guardada correctamente',
             data: snapshot
         };
     }

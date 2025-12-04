@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { ValuationService } from './valuation.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -33,6 +33,30 @@ export class HistoryService {
     }
 
     async crearSnapshot(portafolioId: string) {
+        // Validar que no exista un snapshot hoy
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+
+        const mañana = new Date(hoy);
+        mañana.setDate(mañana.getDate() + 1);
+
+        const snapshotExistente = await this.prisma.portafolioSnapshot.findFirst({
+            where: {
+                portafolioId,
+                createdAt: {
+                    gte: hoy,
+                    lt: mañana
+                }
+            }
+        });
+
+        if (snapshotExistente) {
+            throw new ConflictException(
+                'Ya existe un snapshot para hoy. Solo se permite crear un snapshot por día.'
+            );
+        }
+
+        // Continuar con la creación del snapshot
         const valoracion = await this.valuationService.calcularValorPortafolio(portafolioId);
 
         return this.prisma.portafolioSnapshot.create({
@@ -62,7 +86,7 @@ export class HistoryService {
         });
 
         return snapshots.map(snapshot => ({
-            totalWallet: Number(snapshot.totalInvertido),
+            totalPortfolio: Number(snapshot.totalInvertido),
             date: snapshot.createdAt
         }));
     }
