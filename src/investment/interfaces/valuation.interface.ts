@@ -2,7 +2,7 @@ export interface ActivoValorizado {
     id: string;
     nombre: string;
     prefijo: string;
-    tipo: 'Criptomoneda' | 'Cedear' | 'Accion' | 'FCI';
+    tipo: string;
     cantidad: number;
     costoPromedioUSD: number;
     costoPromedioARS: number | null;
@@ -13,6 +13,8 @@ export interface ActivoValorizado {
     gananciaPerdida: number;
     gananciaPorc: number;
     color: string;
+    icono: string;
+    porcentajeComposicion: number;
 }
 
 export interface ResumenCategoria {
@@ -47,7 +49,7 @@ export const TIPO_CONFIG = {
         type: 'stocks'
     },
     FCI: {
-        name: 'FCI',
+        name: 'FONDO COMUN INVERSION',
         color: '#36A2EB',
         icon: 'show_chart',
         type: 'fund'

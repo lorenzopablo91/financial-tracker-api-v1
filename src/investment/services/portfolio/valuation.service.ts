@@ -54,21 +54,27 @@ export class ValuationService {
             gananciasRealizadas
         );
 
-        // 6. Generar resumen por categorías
-        const categorias = this.generarResumenCategorias(
+        // 6. Calcular porcentaje de composición para cada activo
+        const activosConPorcentaje = this.calcularPorcentajesComposicion(
             activosValorizados,
+            totales.valorActualActivos
+        );
+
+        // 7. Generar resumen por categorías
+        const categorias = this.generarResumenCategorias(
+            activosConPorcentaje,
             totales
         );
 
-        // 7. Construir respuesta final
+        // 8. Construir respuesta final
         return {
             portafolio: portafolio.nombre,
             ...totales,
-            activos: activosValorizados,
+            activos: activosConPorcentaje,
             categorias,
             metadata: {
                 timestamp: new Date().toISOString(),
-                activosCount: activosValorizados.length,
+                activosCount: activosConPorcentaje.length,
                 cotizacionCCL
             }
         };
@@ -242,9 +248,10 @@ export class ValuationService {
                 ? (gananciaPerdida / costoBase) * 100
                 : 0;
 
-            // Obtener color del tipo de activo
+            // Obtener configuración del tipo de activo (color e icono)
             const config = TIPO_CONFIG[activo.tipo as keyof typeof TIPO_CONFIG];
-            const color = config?.color || '#6B7280'; // Color por defecto si no existe
+            const color = config?.color || '#6B7280'; // Color por defecto
+            const icono = config?.icon || 'help_outline'; // Icono por defecto
 
             return {
                 id: activo.id,
@@ -264,9 +271,31 @@ export class ValuationService {
                 valorActual: this.redondear(valorActual),
                 gananciaPerdida: this.redondear(gananciaPerdida),
                 gananciaPorc: this.redondear(gananciaPorc),
-                color: color
+                color: color,
+                icono: icono,
+                porcentajeComposicion: 0 // Se calculará después
             };
         });
+    }
+
+    private calcularPorcentajesComposicion(
+        activos: ActivoValorizado[],
+        valorActualTotal: number
+    ): ActivoValorizado[] {
+        if (valorActualTotal === 0) {
+            // Si el valor total es 0, todos los activos tienen 0% de composición
+            return activos.map(activo => ({
+                ...activo,
+                porcentajeComposicion: 0
+            }));
+        }
+
+        return activos.map(activo => ({
+            ...activo,
+            porcentajeComposicion: this.redondear(
+                (activo.valorActual / valorActualTotal) * 100
+            )
+        }));
     }
 
     private obtenerPrecioMercado(
