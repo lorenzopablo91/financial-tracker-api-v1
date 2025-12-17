@@ -36,7 +36,7 @@ export class ValuationService {
         }
 
         // 3. Obtener precios de mercado
-        const { preciosCrypto, preciosIOL, cotizacionCCL } =
+        const { preciosCrypto, preciosIOL, cotizacionUSD } =
             await this.obtenerPreciosMercado(portafolio.activos);
 
         // 4. Valorizar activos
@@ -44,7 +44,7 @@ export class ValuationService {
             portafolio.activos,
             preciosCrypto,
             preciosIOL,
-            cotizacionCCL
+            cotizacionUSD
         );
 
         // 5. Calcular totales
@@ -75,7 +75,7 @@ export class ValuationService {
             metadata: {
                 timestamp: new Date().toISOString(),
                 activosCount: activosConPorcentaje.length,
-                cotizacionCCL
+                cotizacionUSD
             }
         };
     }
@@ -164,15 +164,15 @@ export class ValuationService {
         }
     }
 
-    private async obtenerCotizacionCCL(): Promise<number> {
+    private async obtenerCotizacionUSD(): Promise<number> {
         try {
-            const cotizacion = await this.dolarBaseService.getCotizacionPorTipo('ccl').toPromise();
-            const valor = cotizacion?.venta || 1200;
-            this.logger.log(`Cotización CCL: $${valor}`);
+            const cotizacion = await this.dolarBaseService.getCotizacionPorTipo('mep').toPromise();
+            const valor = cotizacion?.venta || 0;
+            this.logger.log(`Cotización USD: $${valor}`);
             return valor;
         } catch (error) {
-            this.logger.error('Error obteniendo cotización CCL:', error);
-            return 1200;
+            this.logger.error('Error obteniendo cotización USD:', error);
+            return 0;
         }
     }
 
@@ -182,17 +182,17 @@ export class ValuationService {
         const acciones = activos.filter(a => a.tipo === 'Accion');
         const fcis = activos.filter(a => a.tipo === 'FCI');
 
-        const [preciosCrypto, preciosIOL, cotizacionCCL] = await Promise.all([
+        const [preciosCrypto, preciosIOL, cotizacionUSD] = await Promise.all([
             this.obtenerPreciosCrypto(cryptos.map(c => c.prefijo)),
             this.obtenerPreciosIOL([
                 ...cedears.map(c => c.prefijo),
                 ...acciones.map(a => a.prefijo),
                 ...fcis.map(f => f.prefijo)
             ]),
-            this.obtenerCotizacionCCL()
+            this.obtenerCotizacionUSD()
         ]);
 
-        return { preciosCrypto, preciosIOL, cotizacionCCL };
+        return { preciosCrypto, preciosIOL, cotizacionUSD };
     }
 
     private construirRespuestaSinActivos(
@@ -220,7 +220,7 @@ export class ValuationService {
             metadata: {
                 timestamp: new Date().toISOString(),
                 activosCount: 0,
-                cotizacionCCL: 0
+                cotizacionUSD: 0
             }
         };
     }
@@ -229,14 +229,14 @@ export class ValuationService {
         activos: any[],
         preciosCrypto: Record<string, number>,
         preciosIOL: Record<string, number>,
-        cotizacionCCL: number
+        cotizacionUSD: number
     ): ActivoValorizado[] {
         return activos.map(activo => {
             const precioMercado = this.obtenerPrecioMercado(
                 activo,
                 preciosCrypto,
                 preciosIOL,
-                cotizacionCCL
+                cotizacionUSD
             );
 
             const cantidad = Number(activo.cantidad);
@@ -302,7 +302,7 @@ export class ValuationService {
         activo: any,
         preciosCrypto: Record<string, number>,
         preciosIOL: Record<string, number>,
-        cotizacionCCL: number
+        cotizacionUSD: number
     ): number {
         if (activo.tipo === 'Criptomoneda') {
             const precio = preciosCrypto[activo.prefijo] || 0;
@@ -328,8 +328,8 @@ export class ValuationService {
                 this.logger.warn(`⚠️  Precio IOL no encontrado para ${activo.prefijo} (${activo.tipo})`);
                 return 0;
             }
-            const precioUSD = precioARS / cotizacionCCL;
-            this.logger.debug(`${activo.prefijo}: $${precioARS} ARS = $${precioUSD.toFixed(2)} USD (CCL: $${cotizacionCCL})`);
+            const precioUSD = precioARS / cotizacionUSD;
+            this.logger.debug(`${activo.prefijo}: $${precioARS} ARS = $${precioUSD.toFixed(2)} USD (USD: $${cotizacionUSD})`);
             return precioUSD;
         }
 
