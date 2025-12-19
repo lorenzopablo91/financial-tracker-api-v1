@@ -34,24 +34,24 @@ export const TIPO_CONFIG = {
         name: 'CRIPTOMONEDAS',
         color: '#FF9F40',
         icon: 'currency_bitcoin',
-        type: 'crypto'
+        type: 'Criptomoneda'
     },
     Cedear: {
         name: 'CEDEARS',
         color: '#4BC0C0',
         icon: 'attach_money',
-        type: 'cedears'
+        type: 'Cedear'
     },
     Accion: {
         name: 'ACCIONES',
         color: '#9966FF',
         icon: 'bar_chart',
-        type: 'stocks'
+        type: 'Accion'
     },
     FCI: {
         name: 'FONDO COMUN INVERSION',
         color: '#36A2EB',
         icon: 'show_chart',
-        type: 'fund'
+        type: 'FCI'
     }
 } as const;
