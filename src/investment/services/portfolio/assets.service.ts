@@ -135,6 +135,9 @@ export class AssetsService {
                 ...(precioARS && { precioARS }),
                 ...(tipoCambio && { tipoCambio }),
                 montoUSD: montoTotal,
+                activoPrefijo: data.prefijo,
+                activoNombre: data.nombre || activo.nombre,
+                activoTipo: data.tipo,
                 notas: data.notas,
                 fecha: data.fecha || new Date()
             }
@@ -142,7 +145,6 @@ export class AssetsService {
 
         return {
             operacion,
-            activo,
             mensaje: `Compra de ${data.cantidad} ${prefijoUpper} registrada exitosamente`
         };
     }
@@ -224,6 +226,9 @@ export class AssetsService {
                 costoBaseVendido,
                 gananciaRealizada,
                 notas: data.notas,
+                activoPrefijo: activo.prefijo,
+                activoNombre: activo.nombre,
+                activoTipo: activo.tipo,
                 fecha: data.fecha || new Date()
             }
         });

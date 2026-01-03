@@ -59,6 +59,9 @@ model Operacion {
   notas             String?       @db.Text
   fecha             DateTime      @default(now())
   createdAt         DateTime      @default(now()) @map("created_at")
+  activoPrefijo     String?       @map("activo_prefijo") @db.VarChar(50)
+  activoNombre      String?       @map("activo_nombre") @db.VarChar(255)
+  activoTipo        TipoActivo?   @map("activo_tipo")
 
   portafolio Portafolio @relation(fields: [portafolioId], references: [id], onDelete: Cascade)
   activo     Activo?    @relation(fields: [activoId], references: [id], onDelete: SetNull)

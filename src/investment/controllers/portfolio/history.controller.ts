@@ -16,12 +16,10 @@ export class HistoryController {
     @Get(':id/operaciones')
     @Roles(Role.ADMIN, Role.VIEWER)
     async obtenerHistorialOperaciones(
-        @Param('id') portafolioId: string,
-        @Query('limit') limit?: string
+        @Param('id') portafolioId: string
     ) {
         const operaciones = await this.historyService.obtenerHistorialOperaciones(
-            portafolioId,
-            limit ? parseInt(limit) : 50
+            portafolioId
         );
         return {
             success: true,
@@ -33,12 +31,10 @@ export class HistoryController {
     @Get(':id/snapshots')
     @Roles(Role.ADMIN, Role.VIEWER)
     async obtenerSnapshots(
-        @Param('id') portafolioId: string,
-        @Query('limit') limit?: string
+        @Param('id') portafolioId: string
     ) {
         const snapshots = await this.historyService.obtenerHistoricoSnapshots(
-            portafolioId,
-            limit ? parseInt(limit) : 30
+            portafolioId
         );
         return {
             success: true,

@@ -2,6 +2,7 @@ import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { ValuationService } from './valuation.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { TIPO_CONFIG } from 'src/investment/interfaces/valuation.interface';
 
 @Injectable()
 export class HistoryService {
@@ -14,21 +15,20 @@ export class HistoryService {
     ) { }
 
     // ===== HISTÓRICO =====
-
-    async obtenerHistorialOperaciones(portafolioId: string, limit = 50) {
-        return this.prisma.operacion.findMany({
+    async obtenerHistorialOperaciones(portafolioId: string) {
+        const operaciones = await this.prisma.operacion.findMany({
             where: { portafolioId },
-            include: {
-                activo: {
-                    select: {
-                        nombre: true,
-                        prefijo: true,
-                        tipo: true
-                    }
-                }
-            },
-            orderBy: { fecha: 'desc' },
-            take: limit
+            orderBy: { fecha: 'desc' }
+        });
+
+        return operaciones.map(op => {
+            const tipoConfig = TIPO_CONFIG[op.activoTipo as keyof typeof TIPO_CONFIG];
+
+            return {
+                ...op,
+                activoIcono: tipoConfig?.icon,
+                activoColor: tipoConfig?.color,
+            };
         });
     }
 
@@ -74,11 +74,10 @@ export class HistoryService {
         });
     }
 
-    async obtenerHistoricoSnapshots(portafolioId: string, limit = 30) {
+    async obtenerHistoricoSnapshots(portafolioId: string) {
         const snapshots = await this.prisma.portafolioSnapshot.findMany({
             where: { portafolioId },
             orderBy: { createdAt: 'asc' },
-            take: limit,
             select: {
                 totalInvertido: true,
                 createdAt: true
