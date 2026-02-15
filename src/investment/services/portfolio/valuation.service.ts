@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { BinanceMainService } from 'src/binance-api/core/services/binance-main.service';
 import { DolarBaseService } from 'src/dolar-api/core/services/dolar-base/dolar-base.service';
@@ -38,6 +38,14 @@ export class ValuationService {
         // 3. Obtener precios de mercado
         const { preciosCrypto, preciosIOL, cotizacionUSD } =
             await this.obtenerPreciosMercado(portafolio.activos);
+
+        // 3.1 Validar que se obtuvieron precios necesarios
+        this.validarPreciosObtenidos(
+            portafolio.activos,
+            preciosCrypto,
+            preciosIOL,
+            cotizacionUSD
+        );
 
         // 4. Valorizar activos
         const activosValorizados = this.valorizarActivos(
@@ -193,6 +201,60 @@ export class ValuationService {
         ]);
 
         return { preciosCrypto, preciosIOL, cotizacionUSD };
+    }
+
+    private validarPreciosObtenidos(
+        activos: any[],
+        preciosCrypto: Record<string, number>,
+        preciosIOL: Record<string, number>,
+        cotizacionUSD: number
+    ) {
+        // Verificar si tenemos activos crypto pero no se obtuvieron preciosa
+        const cryptos = activos.filter(a => a.tipo === 'Criptomoneda');
+        if (cryptos.length > 0 && Object.keys(preciosCrypto).length === 0) {
+            const simbolos = cryptos.map(c => c.prefijo).join(', ');
+            throw new BadRequestException(
+                `No se pudieron obtener los precios de criptomonedas: ${simbolos}. Intenta más tarde.`
+            );
+        }
+
+        // Verificar que se obtuvieron los precios crypto necesarios
+        const symbolosCryptoNoEncontrados = cryptos
+            .filter(c => !preciosCrypto[c.prefijo])
+            .map(c => c.prefijo);
+        if (symbolosCryptoNoEncontrados.length > 0) {
+            throw new BadRequestException(
+                `No se encontraron precios para las criptomonedas: ${symbolosCryptoNoEncontrados.join(', ')}`
+            );
+        }
+
+        // Verificar si tenemos activos IOL pero no se obtuvieron precios
+        const activosIOL = activos.filter(
+            a => a.tipo === 'Cedear' || a.tipo === 'Accion' || a.tipo === 'FCI'
+        );
+        if (activosIOL.length > 0 && Object.keys(preciosIOL).length === 0) {
+            const simbolos = activosIOL.map(a => a.prefijo).join(', ');
+            throw new BadRequestException(
+                `No se pudieron obtener los precios de IOL: ${simbolos}. Intenta más tarde.`
+            );
+        }
+
+        // Verificar que se obtuvieron los precios IOL necesarios
+        const simbolosIOLNoEncontrados = activosIOL
+            .filter(a => !preciosIOL[a.prefijo])
+            .map(a => a.prefijo);
+        if (simbolosIOLNoEncontrados.length > 0) {
+            throw new BadRequestException(
+                `No se encontraron precios para los activos IOL: ${simbolosIOLNoEncontrados.join(', ')}`
+            );
+        }
+
+        // Verificar cotización USD
+        if (activosIOL.length > 0 && cotizacionUSD === 0) {
+            throw new BadRequestException(
+                'No se pudo obtener la cotización del USD. Intenta más tarde.'
+            );
+        }
     }
 
     private construirRespuestaSinActivos(
