@@ -18,6 +18,8 @@ import { CapitalService } from './services/portfolio/capital.service';
 import { ValuationService } from './services/portfolio/valuation.service';
 import { AssetsService } from './services/portfolio/assets.service';
 import { HistoryService } from './services/portfolio/history.service';
+import { BalanceController } from './controllers/balance/balance.controller';
+import { BalanceService } from './services/balance/balance.service';
 
 @Module({
   imports: [
@@ -32,14 +34,16 @@ import { HistoryService } from './services/portfolio/history.service';
     CapitalController,
     ValuationController,
     AssetsController,
-    HistoryController
+    HistoryController,
+    BalanceController
   ],
   providers: [
     PortfolioService,
     CapitalService,
     ValuationService,
     AssetsService,
-    HistoryService
+    HistoryService,
+    BalanceService
   ],
 })
 export class InvestmentModule { }
