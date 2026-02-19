@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type {
-    MonthlyBalance, ExpenseDetail, BalanceSummary, CreateMonthlyBalancePayload, CreateExpenseDetailPayload,
+    MonthlyBalance, ExpenseDetail, CreateMonthlyBalancePayload, CreateExpenseDetailPayload,
 } from 'src/investment/interfaces/balance.interface';
 
 @Injectable()
@@ -290,46 +290,44 @@ export class BalanceService {
         }
     }
 
-    async getBalanceSummary(userId: string, balanceId: string): Promise<BalanceSummary> {
-        const balance = await this.getMonthlyBalanceById(userId, balanceId);
-
-        const income = balance.expenseDetails?.filter(d => d.type === 'income') || [];
-        const expenses = balance.expenseDetails?.filter(d => d.type === 'expense') || [];
-
-        const incomeARS = income.reduce((sum, item) => sum + (item.amountARS || 0), 0);
-        const incomeUSD = income.reduce((sum, item) => sum + (item.amountUSD || 0), 0);
-        const expensesARS = expenses.reduce((sum, item) => sum + (item.amountARS || 0), 0);
-        const expensesUSD = expenses.reduce((sum, item) => sum + (item.amountUSD || 0), 0);
-
-        const totalIncome = incomeARS + (incomeUSD * balance.dollarAmount);
-        const totalExpenses = expensesARS + (expensesUSD * balance.dollarAmount);
-
-        return {
-            totalIncome,
-            totalExpenses,
-            netBalance: balance.grossSalary + totalIncome - totalExpenses,
-            incomeARS,
-            incomeUSD,
-            expensesARS,
-            expensesUSD,
-        };
-    }
-
-    async bulkCreateMonthlyBalances(
+    async addExpenseDetail(
         userId: string,
-        balances: CreateMonthlyBalancePayload[]
-    ): Promise<MonthlyBalance[]> {
-        const results: MonthlyBalance[] = [];
+        balanceId: string,
+        payload: Partial<CreateExpenseDetailPayload>
+    ): Promise<ExpenseDetail> {
+        // Verificar que el balance pertenece al usuario
+        const { data: balance } = await this.supabase
+            .from('monthly_balances')
+            .select('id')
+            .eq('id', balanceId)
+            .eq('user_id', userId)
+            .maybeSingle();
 
-        for (const balancePayload of balances) {
-            try {
-                const balance = await this.createMonthlyBalance(userId, balancePayload);
-                results.push(balance);
-            } catch (error) {
-                console.error(`Error creating balance for ${balancePayload.month} ${balancePayload.year}:`, error.message);
-            }
+        if (!balance) {
+            throw new NotFoundException('Monthly balance not found');
         }
 
-        return results;
+        // Crear el nuevo detalle
+        const { data: newDetail, error } = await this.supabase
+            .from('expense_details')
+            .insert({
+                monthly_balance_id: balanceId,
+                type: payload.type || 'expense',
+                concept: payload.concept || '',
+                amount_ars: payload.amountARS || 0,
+                amount_usd: payload.amountUSD || 0,
+                fee_current: payload.feeCurrent || null,
+                fee_total: payload.feeTotal || null,
+                selected: payload.selected || false,
+            })
+            .select()
+            .single();
+
+        if (error) {
+            throw new BadRequestException(error.message);
+        }
+
+        return newDetail as ExpenseDetail;
     }
+
 }

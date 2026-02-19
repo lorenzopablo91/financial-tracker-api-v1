@@ -24,20 +24,6 @@ export class BalanceController {
         };
     }
 
-    @Post('bulk')
-    @Roles(Role.ADMIN)
-    async bulkCreateMonthlyBalances(
-        @GetUser('id') userId: string,
-        @Body() body: { balances: CreateMonthlyBalancePayload[] }
-    ) {
-        const balances = await this.balanceService.bulkCreateMonthlyBalances(userId, body.balances);
-        return {
-            success: true,
-            data: balances,
-            count: balances.length,
-        };
-    }
-
     @Get()
     @Roles(Role.ADMIN, Role.VIEWER)
     async getAllMonthlyBalances(@GetUser('id') userId: string) {
@@ -104,19 +90,6 @@ export class BalanceController {
         await this.balanceService.deleteMonthlyBalance(userId, id);
     }
 
-    @Get(':id/summary')
-    @Roles(Role.ADMIN, Role.VIEWER)
-    async getBalanceSummary(
-        @GetUser('id') userId: string,
-        @Param('id') id: string
-    ) {
-        const summary = await this.balanceService.getBalanceSummary(userId, id);
-        return {
-            success: true,
-            data: summary,
-        };
-    }
-
     @Put('expense-detail/:id')
     @Roles(Role.ADMIN)
     async updateExpenseDetail(
@@ -139,5 +112,19 @@ export class BalanceController {
         @Param('id') id: string
     ) {
         await this.balanceService.deleteExpenseDetail(userId, id);
+    }
+
+    @Post(':id/expense-detail')
+    @Roles(Role.ADMIN)
+    async addExpenseDetail(
+        @GetUser('id') userId: string,
+        @Param('id') balanceId: string,
+        @Body() payload: Partial<CreateExpenseDetailPayload>
+    ) {
+        const detail = await this.balanceService.addExpenseDetail(userId, balanceId, payload);
+        return {
+            success: true,
+            data: detail,
+        };
     }
 }
