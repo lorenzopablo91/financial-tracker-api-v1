@@ -67,4 +67,28 @@ export class PortfolioService {
     });
   }
 
+  // Helper para calcular el efectivo disponible (Liquid Cash)
+  async obtenerEfectivoDisponible(id: string): Promise<number> {
+    const portafolio = await this.prisma.portafolio.findUnique({
+      where: { id },
+      include: { activos: true }
+    });
+
+    if (!portafolio) {
+      throw new NotFoundException(`Portafolio ${id} no encontrado`);
+    }
+
+    const capitalInicial = Number(portafolio.capitalInicial);
+    const gananciasRealizadas = Number(portafolio.gananciasRealizadas);
+
+    // Costo base = sumatoria de (cantidad * costoPromedioUSD)
+    const costoBaseActivos = portafolio.activos.reduce(
+      (sum, activo) => sum + (Number(activo.cantidad) * Number(activo.costoPromedioUSD)),
+      0
+    );
+
+    // Formula: Cash = Capital + Gains - Invested
+    return capitalInicial + gananciasRealizadas - costoBaseActivos;
+  }
+
 }

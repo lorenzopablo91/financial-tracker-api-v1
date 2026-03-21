@@ -267,21 +267,23 @@ export class ValuationService {
         capitalInicial: number,
         gananciasRealizadas: number
     ) {
-        const totalInvertido = capitalInicial + gananciasRealizadas;
+        const gananciaTotal = gananciasRealizadas;
+        const valorTotalPortafolio = capitalInicial + gananciaTotal;
         const gananciaTotalPorc = capitalInicial > 0
-            ? (gananciasRealizadas / capitalInicial) * 100
+            ? (gananciaTotal / capitalInicial) * 100
             : 0;
 
         return {
             portafolio: nombre,
-            capitalInicial,
-            gananciasRealizadas,
+            capitalInicial: this.redondear(capitalInicial),
+            gananciasRealizadas: this.redondear(gananciasRealizadas),
+            gananciasNoRealizadas: 0,
             valorActualActivos: 0,
             costoBaseActivos: 0,
-            gananciasNoRealizadas: 0,
-            totalInvertido,
-            gananciaTotal: gananciasRealizadas,
-            gananciaTotalPorc,
+            efectivoDisponible: this.redondear(capitalInicial + gananciasRealizadas),
+            totalInvertido: this.redondear(valorTotalPortafolio), // Mantenemos nombre por compatibilidad
+            gananciaTotal: this.redondear(gananciaTotal),
+            gananciaTotalPorc: this.redondear(gananciaTotalPorc),
             activos: [],
             categorias: [],
             metadata: {
@@ -417,9 +419,17 @@ export class ValuationService {
             (sum, a) => sum + a.costoBase,
             0
         );
+        
         const gananciasNoRealizadas = valorActualActivos - costoBaseActivos;
         const gananciaTotal = gananciasRealizadas + gananciasNoRealizadas;
-        const totalInvertido = valorActualActivos + gananciasRealizadas;
+        
+        // El valor total es el capital aportado + todas las ganancias (realizadas y no)
+        const valorTotalPortafolio = capitalInicial + gananciaTotal;
+        
+        // El efectivo disponible es lo que no está invertido en activos: 
+        // Capital aportado + Ganancias ya realizadas - Lo que gastamos en activos actuales
+        const efectivoDisponible = capitalInicial + gananciasRealizadas - costoBaseActivos;
+
         const gananciaTotalPorc = capitalInicial > 0
             ? (gananciaTotal / capitalInicial) * 100
             : 0;
@@ -430,7 +440,8 @@ export class ValuationService {
             gananciasNoRealizadas: this.redondear(gananciasNoRealizadas),
             valorActualActivos: this.redondear(valorActualActivos),
             costoBaseActivos: this.redondear(costoBaseActivos),
-            totalInvertido: this.redondear(totalInvertido),
+            efectivoDisponible: this.redondear(efectivoDisponible),
+            totalInvertido: this.redondear(valorTotalPortafolio), // Mantenemos nombre por compatibilidad
             gananciaTotal: this.redondear(gananciaTotal),
             gananciaTotalPorc: this.redondear(gananciaTotalPorc)
         };

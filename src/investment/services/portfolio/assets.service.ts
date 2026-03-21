@@ -60,6 +60,14 @@ export class AssetsService {
 
         const montoTotal = data.cantidad * precioUSD;
 
+        // Validar si hay efectivo disponible para la compra
+        const efectivoDisponible = await this.portfolioService.obtenerEfectivoDisponible(portafolioId);
+        if (montoTotal > efectivoDisponible + 0.01) { // Pequeño margen por redondeo
+            throw new BadRequestException(
+                `No tienes suficiente efectivo disponible ($${efectivoDisponible.toFixed(2)}) para realizar esta compra de $${montoTotal.toFixed(2)}`
+            );
+        }
+
         let activo = await this.prisma.activo.findUnique({
             where: {
                 portafolioId_prefijo: {

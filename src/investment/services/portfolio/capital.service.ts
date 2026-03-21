@@ -52,11 +52,11 @@ export class CapitalService {
   }) {
     const portafolio = await this.portfolioService.obtenerPortafolio(portafolioId);
 
-    const capitalActual = Number(portafolio.capitalInicial);
+    const efectivoDisponible = await this.portfolioService.obtenerEfectivoDisponible(portafolioId);
 
-    if (data.montoUSD > capitalActual) {
+    if (data.montoUSD > efectivoDisponible + 0.01) {
       throw new BadRequestException(
-        `No puedes retirar $${data.montoUSD}. Capital disponible: $${capitalActual}`
+        `No puedes retirar $${data.montoUSD}. Efectivo disponible líquido: $${efectivoDisponible.toFixed(2)}`
       );
     }
 
