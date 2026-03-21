@@ -185,10 +185,12 @@ export class ValuationService {
     }
 
     private async obtenerPreciosMercado(activos: any[]) {
-        const cryptos = activos.filter(a => a.tipo === 'Criptomoneda');
-        const cedears = activos.filter(a => a.tipo === 'Cedear');
-        const acciones = activos.filter(a => a.tipo === 'Accion');
-        const fcis = activos.filter(a => a.tipo === 'FCI');
+        const activosConCantidad = activos.filter(a => Number(a.cantidad) > 0);
+
+        const cryptos = activosConCantidad.filter(a => a.tipo === 'Criptomoneda');
+        const cedears = activosConCantidad.filter(a => a.tipo === 'Cedear');
+        const acciones = activosConCantidad.filter(a => a.tipo === 'Accion');
+        const fcis = activosConCantidad.filter(a => a.tipo === 'FCI');
 
         const [preciosCrypto, preciosIOL, cotizacionUSD] = await Promise.all([
             this.obtenerPreciosCrypto(cryptos.map(c => c.prefijo)),
@@ -209,8 +211,11 @@ export class ValuationService {
         preciosIOL: Record<string, number>,
         cotizacionUSD: number
     ) {
+        // Solo validamos precios para activos con cantidad > 0
+        const activosConCantidad = activos.filter(a => Number(a.cantidad) > 0);
+
         // Verificar si tenemos activos crypto pero no se obtuvieron preciosa
-        const cryptos = activos.filter(a => a.tipo === 'Criptomoneda');
+        const cryptos = activosConCantidad.filter(a => a.tipo === 'Criptomoneda');
         if (cryptos.length > 0 && Object.keys(preciosCrypto).length === 0) {
             const simbolos = cryptos.map(c => c.prefijo).join(', ');
             throw new BadRequestException(
@@ -229,7 +234,7 @@ export class ValuationService {
         }
 
         // Verificar si tenemos activos IOL pero no se obtuvieron precios
-        const activosIOL = activos.filter(
+        const activosIOL = activosConCantidad.filter(
             a => a.tipo === 'Cedear' || a.tipo === 'Accion' || a.tipo === 'FCI'
         );
         if (activosIOL.length > 0 && Object.keys(preciosIOL).length === 0) {
