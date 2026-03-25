@@ -20,4 +20,8 @@ export const IOL_ENDPOINTS = {
 
   // Market Data
   MARKET_DATA: '/mercados',
+
+  // Cotización por símbolo
+  COTIZACION: (mercado: string, simbolo: string) =>
+    `/${mercado}/Titulos/${simbolo}/cotizacion`,
 } as const;
