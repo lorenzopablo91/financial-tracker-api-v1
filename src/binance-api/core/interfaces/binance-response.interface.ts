@@ -90,3 +90,20 @@ export enum CircuitState {
   OPEN = 'OPEN',
   HALF_OPEN = 'HALF_OPEN'
 }
+
+export interface PriceUpdate {
+  symbol: string;
+  price: number;
+  priceChangePercent: number;
+  highPrice: number;
+  lowPrice: number;
+  volume: number;
+}
+
+export interface CryptoTicker {
+  price: number;
+  priceChangePercent: number;
+  highPrice: number;
+  lowPrice: number;
+  volume: number;
+}

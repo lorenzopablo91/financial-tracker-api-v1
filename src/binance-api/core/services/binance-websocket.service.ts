@@ -1,11 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Subject, Observable } from 'rxjs';
 import WebSocket from 'ws';
-
-interface PriceUpdate {
-    symbol: string;
-    price: number;
-}
+import { CryptoTicker, PriceUpdate } from '../interfaces/binance-response.interface';
 
 @Injectable()
 export class BinanceWebsocketService implements OnModuleDestroy {
@@ -213,18 +209,24 @@ export class BinanceWebsocketService implements OnModuleDestroy {
         try {
             const parsed = JSON.parse(data);
 
-            // Formato de respuesta del ticker stream
-            const symbol = parsed.s; // ej: "BTCUSDT"
-            const price = parseFloat(parsed.c); // closing price
+            const symbol = parsed.s;
+            const price = parseFloat(parsed.c);              // lastPrice
+            const priceChangePercent = parseFloat(parsed.P); // % 24h
+            const highPrice = parseFloat(parsed.h);          // high 24h
+            const lowPrice = parseFloat(parsed.l);           // low 24h
+            const volume = parseFloat(parsed.q);             // quoteVolume USDT
 
             if (symbol && !isNaN(price)) {
                 const symbolWithoutUSDT = symbol.replace('USDT', '');
                 this.priceUpdates$.next({
                     symbol: symbolWithoutUSDT,
-                    price
+                    price,
+                    priceChangePercent,
+                    highPrice,
+                    lowPrice,
+                    volume,
                 });
-
-                this.logger.debug(`📊 ${symbolWithoutUSDT}: $${price}`);
+                this.logger.debug(`📊 ${symbolWithoutUSDT}: $${price} (${priceChangePercent > 0 ? '+' : ''}${priceChangePercent}%)`);
             }
         } catch (error: any) {
             this.logger.error(`Error procesando actualización: ${error.message}`);
@@ -273,5 +275,65 @@ export class BinanceWebsocketService implements OnModuleDestroy {
         this.unsubscribeAll();
         this.priceUpdates$.complete();
         this.logger.log('🛑 BinanceWebsocketService destruido');
+    }
+
+    async getTickersOnce(symbols: string[]): Promise<Record<string, CryptoTicker>> {
+        return new Promise((resolve, reject) => {
+            const tickers: Record<string, CryptoTicker> = {};
+            let receivedCount = 0;
+            const timeout = setTimeout(() => {
+                reject(new Error(`Timeout esperando tickers de: ${symbols.join(', ')}`));
+            }, 15000);
+
+            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                this.initWebSocket(symbols, () => {
+                    this.waitForTickers(symbols, tickers, receivedCount, timeout, resolve, reject);
+                });
+            } else {
+                const newSymbols = symbols.filter(s => !this.connectedSymbols.has(s));
+                if (newSymbols.length > 0) {
+                    const allSymbols = Array.from(this.connectedSymbols).concat(newSymbols);
+                    this.ws.close();
+                    this.ws = null;
+                    this.initWebSocket(allSymbols, () => {
+                        this.waitForTickers(symbols, tickers, receivedCount, timeout, resolve, reject);
+                    });
+                } else {
+                    this.waitForTickers(symbols, tickers, receivedCount, timeout, resolve, reject);
+                }
+            }
+        });
+    }
+
+    private waitForTickers(
+        symbols: string[],
+        tickers: Record<string, CryptoTicker>,
+        receivedCount: number,
+        timeout: NodeJS.Timeout,
+        resolve: Function,
+        reject: Function
+    ) {
+        const subscription = this.priceUpdates$.subscribe(update => {
+            if (symbols.includes(update.symbol)) {
+                tickers[update.symbol] = {
+                    price: update.price,
+                    priceChangePercent: update.priceChangePercent,
+                    highPrice: update.highPrice,
+                    lowPrice: update.lowPrice,
+                    volume: update.volume,
+                };
+                receivedCount++;
+
+                this.logger.debug(
+                    `📈 ${update.symbol} $${update.price} (${update.priceChangePercent > 0 ? '+' : ''}${update.priceChangePercent}%) [${receivedCount}/${symbols.length}]`
+                );
+
+                if (receivedCount === symbols.length) {
+                    clearTimeout(timeout);
+                    subscription.unsubscribe();
+                    resolve(tickers);
+                }
+            }
+        });
     }
 }

@@ -20,6 +20,8 @@ import { AssetsService } from './services/portfolio/assets.service';
 import { HistoryService } from './services/portfolio/history.service';
 import { BalanceController } from './controllers/balance/balance.controller';
 import { BalanceService } from './services/balance/balance.service';
+import { DashboardController } from './controllers/dashboard/dashboard.controller';
+import { DashboardService } from './services/dashboard/dashboard.service';
 
 @Module({
   imports: [
@@ -35,7 +37,8 @@ import { BalanceService } from './services/balance/balance.service';
     ValuationController,
     AssetsController,
     HistoryController,
-    BalanceController
+    BalanceController,
+    DashboardController
   ],
   providers: [
     PortfolioService,
@@ -43,7 +46,8 @@ import { BalanceService } from './services/balance/balance.service';
     ValuationService,
     AssetsService,
     HistoryService,
-    BalanceService
+    BalanceService,
+    DashboardService
   ],
 })
 export class InvestmentModule { }
